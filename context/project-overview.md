@@ -92,6 +92,15 @@
 
 ---
 
+## UI快照（Screenshots）
+
+dashboard UI參考以下截圖, 不用完全一致。
+Use it as r reference:
+
+- @context/screenshots/dashboard-ui-main.png
+- @context/screenshots/dashboard-ui-drawer.png
+- @context/screenshots/dashboard-ui-viewer.png
+
 ## 🔌 系統架構 (API Architecture)
 
 ```mermaid
