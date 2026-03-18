@@ -7,7 +7,7 @@ This is phase 2 of 3 for the dashboard UI layout. Use the screenshot referenced 
 ## Requirements for phase 2
 
 - Collapsible sidebar
-- Items/types with links to /items/TYPE (eg.items/snippets)
+- Notes
 - Favorite collections
 - Most recent collections
 - User avatar area at the bottom
