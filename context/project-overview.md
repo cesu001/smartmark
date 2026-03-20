@@ -58,7 +58,8 @@
 | :-------------- | :-------------------------------------------- |
 | **Framework**   | Next.js (App Router)                          |
 | **Database**    | PostgreSQL (啟用 `pgvector` 擴充支援向量檢索) |
-| **ORM**         | Prisma                                        |
+| **ORM**         | Prisma 7                                      |
+| **Auth**        | NextAuth v5 (Auth.js)                         |
 | **AI Services** | OpenAI API (Text Generation & Embeddings)     |
 
 ---
@@ -112,6 +113,31 @@ graph TD;
 
 ---
 
+## 🔐 認證流程 (Auth Flow)
+
+```mermaid
+flowchart TD
+  User([使用者]) --> AuthPage[登入 / 註冊頁面]
+
+  AuthPage -->|Email + 密碼| CredProvider[Credentials Provider]
+  AuthPage -->|OAuth 登入| OAuthProvider[OAuth Provider\ne.g. Google]
+
+  CredProvider -->|驗證密碼| DB[(PostgreSQL)]
+  OAuthProvider -->|回調 callback| NextAuth[NextAuth v5]
+
+  DB -->|帳號存在且密碼正確| NextAuth
+  DB -->|帳號不存在| Error([登入失敗])
+
+  NextAuth -->|建立 Session| SessionDB[(Session 寫入 DB)]
+  NextAuth -->|設定 Cookie| Client[前端介面]
+
+  Client -->|受保護路由| Middleware[Next.js Middleware]
+  Middleware -->|Session 有效| Dashboard([進入 Dashboard])
+  Middleware -->|Session 無效 / 未登入| AuthPage
+```
+
+---
+
 ## 🧠 AI 功能流程 (AI Feature Flow)
 
 ```mermaid
@@ -146,18 +172,63 @@ datasource db {
   extensions = [vector] // 啟用 pgvector
 }
 
+// ── NextAuth required models ──────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Application models ────────────────────────────────────────────────────────
+
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  password    String?
-  isPro       Boolean      @default(false)
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?      // for credentials provider
+  isPro         Boolean      @default(false)
 
-  notes       Note[]
-  collections Collection[]
-  tags        Tag[]
+  accounts      Account[]
+  sessions      Session[]
+  notes         Note[]
+  collections   Collection[]
+  tags          Tag[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Note {

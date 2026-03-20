@@ -4,7 +4,7 @@
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Completed
 
 ## Goals
 
@@ -35,3 +35,4 @@ Use mock data from `src/lib/mock-data.ts` directly (no database yet).
 - **2026-03-17** — Added mock data (`src/lib/mock-data.ts`) and dashboard types (`src/types/dashboard.ts`).
 - **2026-03-18** — Completed Dashboard UI Phase 1. Created `/dashboard` route with dark mode global styles, top bar (search + Import + New Note buttons), and sidebar/main placeholders.
 - **2026-03-18** — Completed Dashboard UI Phase 2. Implemented collapsible sidebar with Notes, Collections, Tags sections (each collapsible), user avatar + settings button at bottom, drawer icon to open/close, mobile full-screen drawer (collapsed by default), and static header with logo + sidebar toggle.
+- **2026-03-20** — Completed Dashboard UI Phase 3. Implemented main content area with 4 stats cards (Total Notes, Collections, Favorite Notes, Favorite Collections), Pinned Notes section, Recent Collections section (up to 5), and Recent Notes section (up to 10). Created StatsCard, NoteCard, and CollectionCard components. All data sourced from mock data.
