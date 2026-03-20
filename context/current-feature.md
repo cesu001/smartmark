@@ -4,11 +4,24 @@
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Goals & requirements -->
+Implement Dashboard UI Phase 3 — the main content area to the right of the sidebar.
+
+- 4 stats cards at the top: number of notes, collections, favorite items, and favorite collections
+- Recent collections section
+- Pinned notes section
+- 10 recent notes section
+
+Use mock data from `src/lib/mock-data.ts` directly (no database yet).
+
+## References
+
+- `context/features/dashboard-phase-3-spec.md`
+- `context/screenshots/dashboard-ui-main.png`
+- `src/lib/mock-data.ts`
 
 ## Notes
 

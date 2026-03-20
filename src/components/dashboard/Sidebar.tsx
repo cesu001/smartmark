@@ -143,7 +143,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const favoritesCount = MOCK_NOTES.filter((n) => n.isFavorite).length;
   const pinnedCount = MOCK_NOTES.filter((n) => n.isPinned).length;
 
-  const recentCollections = MOCK_COLLECTIONS.slice(0, 3);
+  const recentCollections = MOCK_COLLECTIONS;
 
   const [notesExpanded, setNotesExpanded] = useState(true);
   const [collectionsExpanded, setCollectionsExpanded] = useState(true);

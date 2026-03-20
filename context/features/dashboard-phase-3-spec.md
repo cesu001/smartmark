@@ -8,9 +8,9 @@ This is phase 3 of 3 for the dashboard UI layout. Use the screenshot referenced 
 
 - The main area to the right
 - Recent collections
-- Pinned Items
-- 10 Recent items
-- 4 stats cards at the top for number of items, collections, favorite items and favorite collections (Not in screenshot)
+- Pinned notes
+- 10 Recent notes
+- 4 stats cards at the top for number of notes, collections, favorite items and favorite collections (Not in screenshot)
 
 ## References
 
