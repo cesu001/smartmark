@@ -2,11 +2,12 @@ import { Collection } from "@/types/dashboard";
 
 interface CollectionCardProps {
   collection: Collection;
+  borderColor?: string;
 }
 
-export default function CollectionCard({ collection }: CollectionCardProps) {
+export default function CollectionCard({ collection, borderColor = "border-l-border" }: CollectionCardProps) {
   return (
-    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface border border-border hover:bg-surface-hover transition-colors cursor-pointer">
+    <div className={`flex items-center justify-between gap-3 p-3 rounded-lg bg-surface border border-border border-l-4 ${borderColor} hover:bg-surface-hover transition-colors cursor-pointer`}>
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover shrink-0">
           <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
