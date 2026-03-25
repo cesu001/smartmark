@@ -4,28 +4,31 @@
 
 <!-- Not Started|In Progress|Completed -->
 
-Completed
+In Progress
 
 ## Goals
 
-Implement Dashboard UI Phase 3 — the main content area to the right of the sidebar.
+Set up Prisma 7 with Neon PostgreSQL (serverless) as the database for SmartMark.
 
-- 4 stats cards at the top: number of notes, collections, favorite items, and favorite collections
-- Recent collections section
-- Pinned notes section
-- 10 recent notes section
-
-Use mock data from `src/lib/mock-data.ts` directly (no database yet).
+- Install and configure Prisma 7
+- Connect to Neon PostgreSQL via `DATABASE_URL`
+- Create full schema based on `context/project-overview.md` — including NextAuth models (Account, Session, VerificationToken) and all app models (User, Note, Collection, Tag, NoteTag)
+- Enable `pgvector` extension for AI embeddings
+- Add appropriate indexes and ensure cascade deletes are in place
+- Create initial migration with `prisma migrate dev` (never push directly)
+- Verify migration runs cleanly and Prisma Client generates without errors
 
 ## References
 
-- `context/features/dashboard-phase-3-spec.md`
-- `context/screenshots/dashboard-ui-main.png`
-- `src/lib/mock-data.ts`
+- `context/features/database-spec.md`
+- `context/project-overview.md`
+- `context/coding-standards.md`
 
 ## Notes
 
-<!-- Any extra notes -->
+- Use Neon PostgreSQL serverless — `DATABASE_URL` points to the **development** branch
+- Always use `prisma migrate dev` for schema changes, never `db push`
+- Prisma 7 has breaking changes — read the upgrade guide before implementing
 
 ## History
 
