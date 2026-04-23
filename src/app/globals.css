@@ -20,6 +20,11 @@ body {
   color: var(--color-text-primary);
 }
 
+html:not(.dark) {
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #5a5a5a;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
