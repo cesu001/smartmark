@@ -16,9 +16,9 @@ const TAG_CONTENT_TYPES: Record<string, ContentType> = {
 
 const CONTENT_TYPE_BORDER_COLORS: Record<ContentType, string> = {
   frontend: "border-l-blue-500",
-  backend:  "border-l-green-500",
-  testing:  "border-l-orange-500",
-  general:  "border-l-border",
+  backend: "border-l-green-500",
+  testing: "border-l-orange-500",
+  general: "border-l-border",
 };
 
 function deriveBorderColor(tagNames: string[]): string {
@@ -34,9 +34,9 @@ function deriveBorderColor(tagNames: string[]): string {
     counts[type]++;
   }
 
-  const dominant = (
-    Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] as ContentType
-  );
+  const dominant = Object.entries(counts).sort(
+    (a, b) => b[1] - a[1],
+  )[0][0] as ContentType;
 
   return CONTENT_TYPE_BORDER_COLORS[dominant];
 }
@@ -51,7 +51,7 @@ export interface CollectionRow {
 
 export async function getRecentCollections(
   userId: string,
-  limit = 6
+  limit = 6,
 ): Promise<CollectionRow[]> {
   const collections = await prisma.collection.findMany({
     where: { userId },
@@ -78,13 +78,45 @@ export async function getRecentCollections(
     };
   });
 }
-
+// -----^ AI
 export async function getCollectionStats(
-  userId: string
+  userId: string,
 ): Promise<{ total: number; favorites: number }> {
   const [total, favorites] = await Promise.all([
     prisma.collection.count({ where: { userId } }),
     prisma.collection.count({ where: { userId, isFavorite: true } }),
   ]);
   return { total, favorites };
+}
+
+export async function getRecentCollection(userId: string, limit = 3) {
+  const collections = await prisma.collection.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
+      isFavorite: true,
+      _count: { select: { notes: true } },
+    },
+  });
+  return collections;
+}
+
+export async function getFavCollection(userId: string, limit = 2) {
+  const collections = await prisma.collection.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
+      isFavorite: true,
+      _count: { select: { notes: true } },
+    },
+  });
+  return collections;
 }

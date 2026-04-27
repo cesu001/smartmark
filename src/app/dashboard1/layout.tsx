@@ -12,7 +12,7 @@ export default function DashboardLayout({
       <AppSidebar />
       <main className="w-full">
         <AppNavbar />
-        <div className="px-4">{children}</div>
+        <div className="p-2">{children}</div>
       </main>
     </SidebarProvider>
   );
