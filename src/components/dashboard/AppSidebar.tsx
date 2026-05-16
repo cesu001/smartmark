@@ -12,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { getUserInfo } from "@/lib/db/users";
 import {
   Bookmark,
   ChevronDown,
@@ -39,6 +38,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../ui/collapsible";
+import LogoutMenuItem from "./LogOutButton";
+import { requireUser, requireUserId } from "@/lib/auth-utils";
 
 const quickAccessItems = [
   { title: "All Notes", url: "/", icon: Notebook, key: "all" },
@@ -46,13 +47,7 @@ const quickAccessItems = [
   { title: "Pinned", url: "/", icon: Bookmark, key: "pinned" },
 ];
 const AppSidebar = async () => {
-  const user = await getUserInfo();
-  const userId = user?.id;
-  const userName = user?.name;
-  const userEmail = user?.email;
-
-  if (!userId) return <div>Please Login</div>;
-
+  const { id: userId, name: userName, email: userEmail } = await requireUser();
   const [allCount, favCount, pinnedCount, collections, tags] =
     await Promise.all([
       prisma.note.count({ where: { userId } }),
@@ -234,10 +229,7 @@ const AppSidebar = async () => {
                   <span>Setting</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
-                  <LogOut />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
+                <LogoutMenuItem />
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

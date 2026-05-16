@@ -1,14 +1,19 @@
-import type { Metadata } from "next";
-import DashboardShellLoader from "@/components/dashboard/DashboardShellLoader";
-
-export const metadata: Metadata = {
-  title: "SmartMark — Dashboard",
-};
+import AppNavbar from "@/components/dashboard/AppNavbar";
+import AppSidebar from "@/components/dashboard/AppSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardShellLoader>{children}</DashboardShellLoader>;
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="w-full">
+        <AppNavbar />
+        <div className="p-2">{children}</div>
+      </main>
+    </SidebarProvider>
+  );
 }

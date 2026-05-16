@@ -4,13 +4,21 @@
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
+
+- Build login and register UI with email/password and GitHub OAuth
+- Wire up NextAuth v5 credentials + GitHub provider
+- Protect dashboard routes via middleware
 
 ## References
 
 ## Notes
+
+- Login is available as both a full page (`/login`) and an intercepting route modal (`@authModal/(.)login`) for seamless UX from the home page
+- `LoginForm` handles credentials sign-in via NextAuth `signIn("credentials")` with redirect to `/dashboard` on success
+- Dashboard data is fetched by `userId` from session (no more email-based DB lookup)
 
 ## History
 
@@ -28,3 +36,5 @@ Not Started
 - **2026-03-30** — Replaced mock notes data with real DB data on the dashboard. Created `src/lib/db/notes.ts` with `getNoteStats`, `getRecentNotes`, and `getPinnedNotes` functions. Created `src/lib/db/tags.ts` with `getAllTags` function. Total Notes and Favorite Notes stat cards now use live DB counts. Pinned Notes and Recent Notes sections fetch from Neon via Prisma (demo user). Removed all remaining mock data usage from `dashboard/page.tsx`.
 - **2026-04-23** — Added shadcn/ui component library setup with sidebar, avatar, collapsible, dropdown-menu, input, separator, sheet, skeleton, and tooltip components. Installed `next-themes` and wired `ThemeProvider` into root layout with system default and class-based dark mode. Added `AppNavbar`, `AppSidebar`, and `ModeToggle` components. Fixed light mode text color so `--color-text-primary` resolves to `#1a1a1a` in light mode and remains `#e8e8e8` in dark mode via `html:not(.dark)` override.
 - **2026-04-27** — Rebuilt `/dashboard1` with shadcn/ui components and live DB data. Replaced placeholder page with responsive grid dashboard (recent notes, pinned notes, stats, collections, tags). Extracted focused server components: `AppNoteCard`, `AppColCard`, `AppStatList`, `AppRecentNotes`, `AppPinnedNotes`, `AppRecentCollections`, `AppFavCollections`. Added `getRecentCollection` and `getFavCollection` DB helpers in `src/lib/db/collections.ts`. Added `src/components/ui/card.tsx` shadcn card component.
+- **2026-05-01** — Scaffolded auth UI on `feature/auth` branch. Added `react-hook-form`, `@hookform/resolvers`, `zod`, `react-icons`, and `next-auth` packages. Created `LoginForm` component (`src/components/auth/LoginForm.tsx`) with email + password fields, zod validation, and react-hook-form. Created full-page login route (`src/app/(auth)/login/page.tsx`) with GitHub OAuth button and email/password form. Created intercepting route modal (`src/app/@authModal/(.)login/page.tsx`) so navigating to `/login` from the home page opens a Dialog overlay instead. Added `@authModal` parallel route slot to root layout. Added shadcn `dialog.tsx`, `field.tsx`, and `label.tsx` UI components. NextAuth `signIn` wiring pending.
+- **2026-05-16** — Wired up NextAuth credentials sign-in. Extracted `authOptions` to `src/lib/auth.ts` and added JWT/session callbacks to inject `user.id` into the session. Extended NextAuth types via `src/types/next-auth.d.ts`. Created `src/lib/auth-utils.ts` with `requireUser()` and `requireUserId()` helpers. Refactored `dashboard/page.tsx` to use `requireUserId()` instead of email-based DB lookup. Extracted `SocialSignIn` client component; made login page a proper server component. Middleware updated to redirect authenticated users away from `/login` and unauthenticated users away from `/dashboard`.
