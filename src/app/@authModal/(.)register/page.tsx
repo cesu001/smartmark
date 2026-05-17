@@ -1,5 +1,6 @@
 "use client";
-import LoginForm from "@/components/auth/LoginForm";
+import RegisterForm from "@/components/auth/RegisterForm";
+import SocialSignIn from "@/components/auth/SocialSignIn";
 import {
   Dialog,
   DialogContent,
@@ -8,9 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import SocialSignIn from "@/components/auth/SocialSignIn";
 
-export default function LoginModal() {
+export default function RegisterModal() {
   const router = useRouter();
   return (
     <Dialog open={true} onOpenChange={() => router.back()}>
@@ -20,7 +20,7 @@ export default function LoginModal() {
             Welcome !
           </DialogTitle>
           <DialogDescription>
-            Choose your login method and get started with SmartMark.
+            Choose your registration method and get started with SmartMark.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
@@ -35,7 +35,7 @@ export default function LoginModal() {
               </span>
             </div>
           </div>
-          <LoginForm />
+          <RegisterForm />
         </div>
       </DialogContent>
     </Dialog>

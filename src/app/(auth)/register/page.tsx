@@ -1,13 +1,13 @@
+import RegisterForm from "@/components/auth/RegisterForm";
+import SocialSignIn from "@/components/auth/SocialSignIn";
 import { authOptions } from "@/lib/auth";
-import LoginForm from "@/components/auth/LoginForm";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import SocialSignIn from "@/components/auth/SocialSignIn";
 
-export default async function LoginPage() {
+export default async function RegisterPage() {
   const session = await getServerSession(authOptions);
   if (session) redirect("/dashboard");
-  return (
+  return(
     <div className="w-full min-h-screen flex justify-center items-center bg-zinc-50 p-4">
       <div className="w-full max-w-120 bg-white rounded-lg shadow-sm p-4 pb-8 border border-zinc-200">
         <div className="flex flex-col items-center gap-2 mb-8">
@@ -28,9 +28,9 @@ export default async function LoginPage() {
               </span>
             </div>
           </div>
-          <LoginForm />
+          <RegisterForm />
         </div>
       </div>
     </div>
-  );
+  )
 }

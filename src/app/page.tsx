@@ -12,9 +12,14 @@ export default async function Home() {
           <Link href="/dashboard">Go to Dashboard</Link>
         </Button>
       ) : (
-        <Button asChild variant="outline">
-          <Link href="/login">Sign In</Link>
-        </Button>
+        <>
+          <Button asChild variant="outline">
+            <Link href="/login">Sign In</Link>
+          </Button>
+          <Button asChild variant="outline" className="bg-green-600/60">
+            <Link href="/register">Sign Up</Link>
+          </Button>
+        </>
       )}
     </div>
   );

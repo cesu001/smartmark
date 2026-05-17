@@ -5,7 +5,6 @@ import { z } from "zod";
 import {
   Field,
   FieldDescription,
-  FieldError,
   FieldGroup,
   FieldLabel,
   FieldSet,
@@ -64,19 +63,18 @@ const LoginForm = () => {
                 <Input
                   {...field}
                   id="email"
-                  autoComplete="off"
+                  autoComplete="username"
                   placeholder="example@mail.com"
                   aria-invalid={fieldState.invalid}
                 />
-                {fieldState.invalid && (
-                  <FieldError errors={[fieldState.error]} />
-                )}
-                <FieldDescription>
-                  Please enter your email address.
+                <FieldDescription
+                  className={fieldState.invalid ? "text-destructive" : ""}
+                >
+                  {fieldState.invalid ? fieldState.error?.message : "Please enter your email address."}
                 </FieldDescription>
               </Field>
             )}
-          ></Controller>
+          />
           <Controller
             name="password"
             control={form.control}
@@ -87,21 +85,26 @@ const LoginForm = () => {
                   {...field}
                   id="password"
                   type="password"
-                  autoComplete="off"
+                  autoComplete="current-password"
                   aria-invalid={fieldState.invalid}
                 />
-                {fieldState.invalid && (
-                  <FieldError errors={[fieldState.error]} />
-                )}
-                <FieldDescription>Please enter your password.</FieldDescription>
+                <FieldDescription
+                  className={fieldState.invalid ? "text-destructive" : ""}
+                >
+                  {fieldState.invalid ? fieldState.error?.message : "Please enter your password."}
+                </FieldDescription>
               </Field>
             )}
-          ></Controller>
+          />
         </FieldGroup>
       </FieldSet>
       <Field orientation="vertical" className="mt-4">
-        <Button form="user_login" type="submit">
-          Login
+        <Button
+          form="user_login"
+          type="submit"
+          disabled={form.formState.isSubmitting}
+        >
+          {form.formState.isSubmitting ? "Logging in..." : "Login"}
         </Button>
       </Field>
     </form>
