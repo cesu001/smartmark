@@ -13,7 +13,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
-import { log } from "console";
+import Link from "next/link";
 
 const registerSchema = z
   .object({
@@ -91,7 +91,9 @@ const RegisterForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel>Email</FieldLabel>
+                <FieldLabel htmlFor="email" className="font-bold">
+                  Email
+                </FieldLabel>
                 <Input
                   {...field}
                   id="email"
@@ -114,7 +116,9 @@ const RegisterForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel>Password</FieldLabel>
+                <FieldLabel htmlFor="password" className="font-bold">
+                  Password
+                </FieldLabel>
                 <Input
                   {...field}
                   id="password"
@@ -137,7 +141,9 @@ const RegisterForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel>Confirm Password</FieldLabel>
+                <FieldLabel htmlFor="confirmPassword" className="font-bold">
+                  Confirm Password
+                </FieldLabel>
                 <Input
                   {...field}
                   id="confirmPassword"
@@ -162,9 +168,22 @@ const RegisterForm = () => {
           form="user_register"
           type="submit"
           disabled={form.formState.isSubmitting}
+          className="font-semibold transition-all duration-200 hover:scale-102"
         >
           {form.formState.isSubmitting ? "Registering..." : "Register"}
         </Button>
+      </Field>
+      <Field className="mt-2">
+        <FieldDescription className="font-semibold text-center">
+          <span>Already got an account ? Sign in </span>
+          <Link
+            href="/login"
+            className="no-underline! transition-colors duration-100 text-primary hover:text-green-500!"
+          >
+            here
+          </Link>
+          <span>.</span>
+        </FieldDescription>
       </Field>
     </form>
   );

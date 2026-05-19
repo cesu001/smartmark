@@ -12,8 +12,8 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
@@ -23,7 +23,6 @@ const loginSchema = z.object({
 type LoginInput = z.infer<typeof loginSchema>;
 
 const LoginForm = () => {
-  const router = useRouter();
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -59,7 +58,9 @@ const LoginForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email" className="font-bold">
+                  Email
+                </FieldLabel>
                 <Input
                   {...field}
                   id="email"
@@ -70,7 +71,9 @@ const LoginForm = () => {
                 <FieldDescription
                   className={fieldState.invalid ? "text-destructive" : ""}
                 >
-                  {fieldState.invalid ? fieldState.error?.message : "Please enter your email address."}
+                  {fieldState.invalid
+                    ? fieldState.error?.message
+                    : "Please enter your email address."}
                 </FieldDescription>
               </Field>
             )}
@@ -80,7 +83,9 @@ const LoginForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password" className="font-bold">
+                  Password
+                </FieldLabel>
                 <Input
                   {...field}
                   id="password"
@@ -88,10 +93,17 @@ const LoginForm = () => {
                   autoComplete="current-password"
                   aria-invalid={fieldState.invalid}
                 />
-                <FieldDescription
-                  className={fieldState.invalid ? "text-destructive" : ""}
-                >
-                  {fieldState.invalid ? fieldState.error?.message : "Please enter your password."}
+                <FieldDescription className="flex justify-between items-center">
+                  <span
+                    className={fieldState.invalid ? "text-destructive" : ""}
+                  >
+                    {fieldState.invalid
+                      ? fieldState.error?.message
+                      : "Please enter your password."}
+                  </span>
+                  <Link href="/forgot-password" className="no-underline!">
+                    Forgot passsword?
+                  </Link>
                 </FieldDescription>
               </Field>
             )}
@@ -103,9 +115,22 @@ const LoginForm = () => {
           form="user_login"
           type="submit"
           disabled={form.formState.isSubmitting}
+          className="font-semibold transition-all duration-200 hover:scale-102"
         >
           {form.formState.isSubmitting ? "Logging in..." : "Login"}
         </Button>
+      </Field>
+      <Field className="mt-2">
+        <FieldDescription className="font-semibold text-center">
+          <span>Not got an account yet? Sign up </span>
+          <Link
+            href="/register"
+            className="no-underline! transition-colors duration-100 text-primary hover:text-green-500!"
+          >
+            here
+          </Link>
+          <span>.</span>
+        </FieldDescription>
       </Field>
     </form>
   );
