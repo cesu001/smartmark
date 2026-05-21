@@ -49,11 +49,8 @@ const ForgotForm = () => {
         return;
       }
       const result = await res.json();
-      const { message, debugLink } = result;
+      const { message } = result;
       toast.success(message || "Reset link sent. Please check your email.");
-      // if (debugLink) {
-      //   console.log("Debug Link:", debugLink);
-      // }
     } catch (error) {
       console.error(error);
       toast.error("An error occurred. Please try again.");

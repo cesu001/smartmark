@@ -1,6 +1,11 @@
 import ForgotForm from "@/components/auth/ForgotForm";
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
-export default function Page() {
+export default async function Page() {
+  const session = await getServerSession(authOptions);
+  if (session) redirect("/dashboard");
   return (
     <div className="w-full min-h-screen flex justify-center items-center bg-zinc-50 p-4">
       <div className="w-full max-w-120 bg-white rounded-lg shadow-sm p-4 pb-8 border border-zinc-200">

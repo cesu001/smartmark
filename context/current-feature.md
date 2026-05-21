@@ -19,6 +19,7 @@ In Progress
 - Login is available as both a full page (`/login`) and an intercepting route modal (`@authModal/(.)login`) for seamless UX from the home page
 - `LoginForm` handles credentials sign-in via NextAuth `signIn("credentials")` with redirect to `/dashboard` on success
 - Dashboard data is fetched by `userId` from session (no more email-based DB lookup)
+- **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 
 ## History
 

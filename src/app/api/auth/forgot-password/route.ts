@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
+import { resend } from "@/lib/resend";
 
 export async function POST(request: Request) {
   try {
@@ -38,11 +39,25 @@ export async function POST(request: Request) {
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
     console.log("Reset Link:", resetLink);
 
+    try {
+      await resend.emails.send({
+        from: "onboarding@resend.dev",
+        to: "cesu001@gmail.com", // Change this to the user's email in production
+        subject: "Password Reset Request",
+        html: `<p>Hi,</p>
+          <p>You requested to reset your password. Please click the link below to proceed:</p>
+          <p><a href="${resetLink}">${resetLink}</a></p>
+          <p>This link will expire in 1 hour.</p>
+          <p>If you didn't request this, please ignore this email.</p>`,
+      });
+    } catch (mailError) {
+      console.error("EMAIL_SENDING_ERROR", mailError);
+    }
+
     return NextResponse.json(
       {
         message:
           "If an account exists with this email, a reset link has been sent.",
-        debugLink: resetLink,
       },
       { status: 200 },
     );
