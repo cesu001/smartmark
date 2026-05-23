@@ -47,7 +47,12 @@ const quickAccessItems = [
   { title: "Pinned", url: "/", icon: Bookmark, key: "pinned" },
 ];
 const AppSidebar = async () => {
-  const { id: userId, name: userName, email: userEmail } = await requireUser();
+  const {
+    id: userId,
+    name: userName,
+    email: userEmail,
+    image: userImage,
+  } = await requireUser();
   const [allCount, favCount, pinnedCount, collections, tags] =
     await Promise.all([
       prisma.note.count({ where: { userId } }),
@@ -206,7 +211,11 @@ const AppSidebar = async () => {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
                   <Avatar>
-                    <AvatarImage src="https://github.com/shadcn.png" />
+                    <AvatarImage
+                      src={
+                        userImage ? userImage : "https://github.com/shadcn.png"
+                      }
+                    />
                     <AvatarFallback>CN</AvatarFallback>
                   </Avatar>
                   <div className="flex items-center gap-1 min-w-0 overflow-hidden">
