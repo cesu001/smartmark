@@ -13,7 +13,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
@@ -23,6 +23,7 @@ const loginSchema = z.object({
 type LoginInput = z.infer<typeof loginSchema>;
 
 const LoginForm = () => {
+  const router = useRouter();
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -101,9 +102,13 @@ const LoginForm = () => {
                       ? fieldState.error?.message
                       : "Please enter your password."}
                   </span>
-                  <Link href="/forgot-password" className="no-underline!">
+                  <button
+                    type="button"
+                    onClick={() => router.replace("/forgot-password")}
+                    className="cursor-pointer transition-colors duration-200 hover:text-primary/80"
+                  >
                     Forgot passsword?
-                  </Link>
+                  </button>
                 </FieldDescription>
               </Field>
             )}
@@ -123,12 +128,13 @@ const LoginForm = () => {
       <Field className="mt-2">
         <FieldDescription className="font-semibold text-center">
           <span>Not got an account yet? Sign up </span>
-          <Link
-            href="/register"
-            className="no-underline! transition-colors duration-100 text-primary hover:text-green-500!"
+          <button
+            type="button"
+            onClick={() => router.replace("/register")}
+            className="cursor-pointer text-primary transition-colors duration-200 hover:text-primary/80"
           >
             here
-          </Link>
+          </button>
           <span>.</span>
         </FieldDescription>
       </Field>

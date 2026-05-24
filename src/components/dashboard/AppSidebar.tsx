@@ -18,7 +18,6 @@ import {
   CircleUser,
   Folder,
   Heart,
-  LogOut,
   Notebook,
   Plus,
   Settings,

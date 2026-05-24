@@ -13,7 +13,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const registerSchema = z
   .object({
@@ -29,6 +29,7 @@ const registerSchema = z
 type RegisterInput = z.infer<typeof registerSchema>;
 
 const RegisterForm = () => {
+  const router = useRouter();
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -176,12 +177,13 @@ const RegisterForm = () => {
       <Field className="mt-2">
         <FieldDescription className="font-semibold text-center">
           <span>Already got an account ? Sign in </span>
-          <Link
-            href="/login"
-            className="no-underline! transition-colors duration-100 text-primary hover:text-green-500!"
+          <button
+            type="button"
+            onClick={() => router.replace("/login")}
+            className="cursor-pointer text-primary transition-colors duration-200 hover:text-primary/80"
           >
             here
-          </Link>
+          </button>
           <span>.</span>
         </FieldDescription>
       </Field>
