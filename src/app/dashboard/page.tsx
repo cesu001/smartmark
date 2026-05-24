@@ -16,17 +16,21 @@ export default async function Page() {
   const tags = await getAllTags(userId);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4">
-      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1 2xl:col-span-2">
+      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1 2xl:col-span-2 flex flex-col">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Recent Notes
         </span>
-        <AppRecentNotes userId={userId} tags={tags} />
+        <div className="flex-1">
+          <AppRecentNotes userId={userId} tags={tags} />
+        </div>
       </div>
-      <div className="bg-muted p-4 rounded-lg">
+      <div className="bg-muted p-4 rounded-lg flex flex-col">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Pinned Notes
         </span>
-        <AppPinnedNotes userId={userId} tags={tags} />
+        <div className="flex-1">
+          <AppPinnedNotes userId={userId} tags={tags} />
+        </div>
       </div>
       <div className="bg-muted p-4 rounded-lg">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
