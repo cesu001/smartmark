@@ -12,7 +12,7 @@ const AppRecentNotes = async ({
   const notes = await getRecentNotes(userId, 3);
   if (notes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-48 h-full py-8 border border-dashed border-muted-foreground/20 rounded-xl bg-background/50 group hover:border-muted-foreground/40 transition-colors cursor-pointer">
+      <div className="flex flex-col items-center justify-center min-h-48 h-full py-8 border border-dashed border-muted-foreground/20 rounded-xl bg-background/30 group hover:border-muted-foreground/40 transition-colors cursor-pointer">
         <div className="p-3 bg-muted rounded-full mb-3 group-hover:scale-110 transition-transform duration-200">
           <Plus className="w-8 h-8 text-muted-foreground" />
         </div>

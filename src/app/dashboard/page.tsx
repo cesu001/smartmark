@@ -5,6 +5,7 @@ import AppPinnedNotes from "@/components/dashboard/AppPinnedNotes";
 import AppRecentCollections from "@/components/dashboard/AppRecentCollections";
 import AppFavCollections from "@/components/dashboard/AppFavCollections";
 import { requireUserId } from "@/lib/auth-utils";
+import AppTags from "@/components/dashboard/AppTags";
 
 export const metadata = {
   title: "Dashboard",
@@ -20,7 +21,7 @@ export default async function Page() {
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Recent Notes
         </span>
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col">
           <AppRecentNotes userId={userId} tags={tags} />
         </div>
       </div>
@@ -28,7 +29,7 @@ export default async function Page() {
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Pinned Notes
         </span>
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col">
           <AppPinnedNotes userId={userId} tags={tags} />
         </div>
       </div>
@@ -38,39 +39,29 @@ export default async function Page() {
         </span>
         <AppStatList userId={userId} />
       </div>
-      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1">
+      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1 flex flex-col">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Favorite Collections
         </span>
-        <AppFavCollections userId={userId} />
+        <div className="flex-1 flex flex-col">
+          <AppFavCollections userId={userId} />
+        </div>
       </div>
       <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1 2xl:col-span-2">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Recent Collections
         </span>
-        <AppRecentCollections userId={userId} />
+        <div className="flex-1 flex flex-col">
+          <AppRecentCollections userId={userId} />
+        </div>
       </div>
-      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1">
+      <div className="bg-muted p-4 rounded-lg lg:col-span-2 xl:col-span-1 flex flex-col">
         <span className="block mb-4 text-lg font-bold text-muted-foreground">
           Tags
         </span>
-        {tags.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No tags yet</div>
-        ) : (
-          <div className="flex flex-wrap space-x-4">
-            {tags.slice(0, 8).map((tag) => (
-              <div
-                key={tag.id}
-                className="text-sm bg-primary/10 px-2 py-1 my-2 rounded-xl"
-              >
-                <span>{tag.name}</span>
-                <span className="ml-1 text-muted-foreground">
-                  {tag.noteCount}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex-1 flex flex-col">
+          <AppTags tags={tags} />
+        </div>
       </div>
     </div>
   );
