@@ -4,21 +4,18 @@
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Not Started
 
 ## Goals
 
-- Build login and register UI with email/password and GitHub OAuth
-- Wire up NextAuth v5 credentials + GitHub provider
-- Protect dashboard routes via middleware
+<!-- Add goals here -->
 
 ## References
 
 ## Notes
 
-- Login is available as both a full page (`/login`) and an intercepting route modal (`@authModal/(.)login`) for seamless UX from the home page
-- `LoginForm` handles credentials sign-in via NextAuth `signIn("credentials")` with redirect to `/dashboard` on success
-- Dashboard data is fetched by `userId` from session (no more email-based DB lookup)
+<!-- Add notes here -->
+
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 
 ## History
@@ -47,3 +44,4 @@ In Progress
 - **2026-05-24** — Added intercepting route modal for forgot-password (`@authModal/(.)forgot-password`). Replaced `Link` with `useRouter().replace()` in `LoginForm` and `RegisterForm` for in-modal navigation to `/register`, `/login`, and `/forgot-password`. Removed unused `LogOut` import from `AppSidebar`.
 - **2026-05-24** — Added empty state UI to dashboard. `AppRecentNotes` shows a full-height dashed call-to-action with a `Plus` icon when there are no notes. `AppPinnedNotes` shows a centered italic placeholder when no pinned notes exist. Adjusted `dashboard/page.tsx` containers to use `flex flex-col` so empty states fill available height. Polished the "add note" card in the non-empty recent notes grid.
 - **2026-06-03** — Extended dashboard empty states to all sections. Added dashed empty state blocks to `AppFavCollections` and `AppRecentCollections`. Extracted `AppTags` and `AppTagCard` components from inline tag rendering in `dashboard/page.tsx`. Fixed `flex flex-col` propagation on Favorite Collections and Tags panel containers so empty state blocks stretch to full height.
+- **2026-06-06** — Built pinned notes full page. Created `src/app/dashboard/pinned/page.tsx` showing all pinned notes in a responsive 4-col grid (matching `allnotes/page.tsx` layout) with an "Add new note" CTA card first. Made `limit` optional in `getPinnedNotes` so the page fetches without a cap while the dashboard widget (`AppPinnedNotes`) continues passing `2` explicitly. Fixed a pre-existing build error in `src/app/dashboard/workbench/page.tsx` by wrapping `useSearchParams()` usage in a `<Suspense>` boundary.
