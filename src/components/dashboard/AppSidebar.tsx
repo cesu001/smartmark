@@ -41,9 +41,19 @@ import LogoutMenuItem from "./LogOutButton";
 import { requireUser, requireUserId } from "@/lib/auth-utils";
 
 const quickAccessItems = [
-  { title: "All Notes", url: "/", icon: Notebook, key: "all" },
-  { title: "Favorites", url: "/", icon: Heart, key: "favorite" },
-  { title: "Pinned", url: "/", icon: Bookmark, key: "pinned" },
+  {
+    title: "All Notes",
+    url: "/dashboard/allnotes",
+    icon: Notebook,
+    key: "all",
+  },
+  {
+    title: "Favorites",
+    url: "/dashboard/favorites",
+    icon: Heart,
+    key: "favorite",
+  },
+  { title: "Pinned", url: "/dashboard/pinned", icon: Bookmark, key: "pinned" },
 ];
 const AppSidebar = async () => {
   const {

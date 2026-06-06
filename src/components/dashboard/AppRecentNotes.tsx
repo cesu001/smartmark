@@ -27,9 +27,17 @@ const AppRecentNotes = async ({
       <div className="min-h-28 bg-background flex justify-center items-center border border-muted-foreground/20 rounded-xl transition-transform duration-200 hover:scale-105 cursor-pointer">
         <Plus className="w-12 h-12 text-muted-foreground" />
       </div>
-      {notes.map((note) => (
-        <AppNoteCard key={note.id} note={note} tags={tags} />
-      ))}
+      {notes.map((note) => {
+        const encodedTitle = encodeURIComponent(note.title);
+        return (
+          <AppNoteCard
+            key={note.id}
+            note={note}
+            tags={tags}
+            encodedTitle={encodedTitle}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -1,17 +1,23 @@
+import Link from "next/link";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Note, Tag } from "@/types/dashboard";
 
 interface AppNoteCardProps {
   note: Note;
   tags: Tag[];
+  encodedTitle?: string;
 }
 
-const AppNoteCard = ({ note, tags }: AppNoteCardProps) => {
+const AppNoteCard = ({ note, tags, encodedTitle }: AppNoteCardProps) => {
   const noteTags = tags.filter((t) => note.tags.includes(t.id));
   return (
     <Card>
       <CardTitle className="px-4 py-2 truncate font-semibold">
-        {note.title}
+        <Link
+          href={`/dashboard/workbench?open=${note.id}&title=${encodedTitle}`}
+        >
+          {note.title}
+        </Link>
       </CardTitle>
       <CardContent className="line-clamp-3">{note.content}</CardContent>
       <CardFooter>

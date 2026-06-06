@@ -18,9 +18,17 @@ const AppPinnedNotes = async ({
           </span>
         </div>
       ) : (
-        notes.map((note) => (
-          <AppNoteCard key={note.id} note={note} tags={tags} />
-        ))
+        notes.map((note) => {
+          const encodedTitle = encodeURIComponent(note.title);
+          return (
+            <AppNoteCard
+              key={note.id}
+              note={note}
+              tags={tags}
+              encodedTitle={encodedTitle}
+            />
+          );
+        })
       )}
     </div>
   );
