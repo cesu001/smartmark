@@ -26,6 +26,6 @@ export interface Note {
   isPinned: boolean;
   isFavorite: boolean;
   collectionId: string | null;
-  tags: string[]; // tag IDs
+  tags: { id: string; name: string }[];
   updatedAt: string;
 }

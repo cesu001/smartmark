@@ -107,7 +107,7 @@ const LoginForm = () => {
                     onClick={() => router.replace("/forgot-password")}
                     className="cursor-pointer transition-colors duration-200 hover:text-primary/80"
                   >
-                    Forgot passsword?
+                    Forgot password?
                   </button>
                 </FieldDescription>
               </Field>

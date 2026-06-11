@@ -1,5 +1,3 @@
-import { Tag } from "@/types/dashboard";
-
 const AppTagCard = ({
   id,
   name,

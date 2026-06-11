@@ -1,22 +1,31 @@
-# Current Feature
+# Current Feature: Code Audit Fixes
 
 ## Status
 
-<!-- Not Started|In Progress|Completed -->
-
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Delete old password reset tokens before creating new ones (one active token per email)
+- Add Zod server-side validation to `POST /api/auth/register` (email format + min password length)
+- Add Zod server-side validation to `POST /api/auth/reset-password` (min password length)
+- Fix broken sidebar links: `/dashboard1/collection/...` → `/dashboard/collection/...` and `/dashboard1/tag/...` → `/dashboard/tag/...`
+- Remove `console.log` that leaks reset token URLs to server logs
+- Delete unused `src/lib/mock-data.ts` file
+- Remove unused `Tag` import in `AppTagCard.tsx`
+- Remove unused `result` variable in `RegisterForm.tsx`
+- Fix typo "passsword" → "password" in `LoginForm.tsx`
+- Fix misspelled variable `errorResilt` → `errorResult` in `ForgotForm.tsx`
+- Optimize tag queries: include tag names in note queries via Prisma join instead of fetching all tags separately and filtering in JS
 
 ## References
 
+- Code audit report from code-scanner agent (2026-06-11)
+
 ## Notes
 
-<!-- Add notes here -->
-
-- **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
+- **TODO (unchanged):** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
+- Workbench tab wiring (tabs not controlled, close buttons have no handler) is deferred — the workbench editor feature is not yet implemented and wiring tabs is part of that feature scope
 
 ## History
 

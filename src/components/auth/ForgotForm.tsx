@@ -39,9 +39,9 @@ const ForgotForm = () => {
       });
       if (!res.ok) {
         try {
-          const errorResilt = await res.json();
+          const errorResult = await res.json();
           toast.error(
-            errorResilt.error || "Failed to send reset link. Please try again.",
+            errorResult.error || "Failed to send reset link. Please try again.",
           );
         } catch {
           toast.error("Server error. Please try again.");
