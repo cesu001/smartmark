@@ -1,31 +1,23 @@
-# Current Feature: Code Audit Fixes
+# Current Feature
 
 ## Status
 
-In Progress
+<!-- Not Started|In Progress|Completed -->
+
+Not Started
 
 ## Goals
 
-- Delete old password reset tokens before creating new ones (one active token per email)
-- Add Zod server-side validation to `POST /api/auth/register` (email format + min password length)
-- Add Zod server-side validation to `POST /api/auth/reset-password` (min password length)
-- Fix broken sidebar links: `/dashboard1/collection/...` → `/dashboard/collection/...` and `/dashboard1/tag/...` → `/dashboard/tag/...`
-- Remove `console.log` that leaks reset token URLs to server logs
-- Delete unused `src/lib/mock-data.ts` file
-- Remove unused `Tag` import in `AppTagCard.tsx`
-- Remove unused `result` variable in `RegisterForm.tsx`
-- Fix typo "passsword" → "password" in `LoginForm.tsx`
-- Fix misspelled variable `errorResilt` → `errorResult` in `ForgotForm.tsx`
-- Optimize tag queries: include tag names in note queries via Prisma join instead of fetching all tags separately and filtering in JS
+<!-- Add goals here -->
 
 ## References
 
-- Code audit report from code-scanner agent (2026-06-11)
-
 ## Notes
 
-- **TODO (unchanged):** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
-- Workbench tab wiring (tabs not controlled, close buttons have no handler) is deferred — the workbench editor feature is not yet implemented and wiring tabs is part of that feature scope
+<!-- Add notes here -->
+
+- **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
+- Workbench tab wiring (tabs not controlled, close buttons have no handler) is deferred — part of the upcoming editor feature scope
 
 ## History
 
@@ -56,3 +48,4 @@ In Progress
 - **2026-06-06** — Built pinned notes full page. Created `src/app/dashboard/pinned/page.tsx` showing all pinned notes in a responsive 4-col grid (matching `allnotes/page.tsx` layout) with an "Add new note" CTA card first. Made `limit` optional in `getPinnedNotes` so the page fetches without a cap while the dashboard widget (`AppPinnedNotes`) continues passing `2` explicitly. Fixed a pre-existing build error in `src/app/dashboard/workbench/page.tsx` by wrapping `useSearchParams()` usage in a `<Suspense>` boundary.
 - **2026-06-06** — Added all notes page and note card navigation. Created `src/app/dashboard/allnotes/page.tsx` showing all notes in a responsive 4-col grid with an "Add new note" CTA card. Made `AppNoteCard` titles clickable links to the workbench via an `encodedTitle` prop. Updated sidebar quick access URLs from placeholder `/` to real routes (`/dashboard/allnotes`, `/dashboard/favorites`, `/dashboard/pinned`). Installed Tiptap packages (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `tiptap-markdown`) and added shadcn `scroll-area` and `tabs` UI components in preparation for the editor.
 - **2026-06-11** — Configured MCP tools and custom agent. Added `.mcp.json` wiring up Neon (database), Context7 (library docs), and Playwright (browser automation) MCP servers. Added Neon MCP project/branch/database config to `CLAUDE.md`. Created `.claude/agents/code-scanner.md` — a custom Next.js security and code-quality audit agent that scans `src/` for security vulnerabilities, performance issues, code quality problems, and refactoring opportunities.
+- **2026-06-11** — Applied code audit fixes. Security: added `deleteMany` before creating password reset tokens (one active token per email), added Zod server-side validation to `/api/auth/register` and `/api/auth/reset-password`, removed `console.log` leaking reset URLs to server logs. Fixed broken sidebar links (`/dashboard1/` → `/dashboard/`). Optimized note queries: `Note.tags` type changed from `string[]` to `{ id, name }[]`, Prisma join now fetches tag names inline — eliminated separate `getAllTags` call and JS-side filter in `AppNoteCard`. Cleaned up unused imports and fixed typos (`passsword`, `errorResilt`).
