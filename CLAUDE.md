@@ -21,3 +21,12 @@ npm run lint     # Run ESLint
 ```
 
 **IMPORTANT:** Do not add Claude to any commit messages
+
+## Neon MCP
+
+When using Neon MCP tools, always use:
+- **Project ID:** `shy-hill-60177324` (smartmark)
+- **Branch ID:** `br-shy-forest-a1nazhr1` (development)
+- **Database:** `neondb`
+
+**IMPORTANT:** Never touch the `production` branch (`br-holy-wave-a1n7abmd`) unless explicitly instructed.
