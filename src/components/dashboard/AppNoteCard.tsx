@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
-import { Note, Tag } from "@/types/dashboard";
+import { Note } from "@/types/dashboard";
 
 interface AppNoteCardProps {
   note: Note;
-  tags: Tag[];
   encodedTitle?: string;
 }
 
-const AppNoteCard = ({ note, tags, encodedTitle }: AppNoteCardProps) => {
-  const noteTags = tags.filter((t) => note.tags.includes(t.id));
+const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
   return (
     <Card>
       <CardTitle className="px-4 py-2 truncate font-semibold">
@@ -23,7 +21,7 @@ const AppNoteCard = ({ note, tags, encodedTitle }: AppNoteCardProps) => {
       <CardFooter>
         <div className="w-full flex items-center justify-between gap-2 mt-auto">
           <div className="flex gap-1">
-            {noteTags.slice(0, 2).map((tag) => (
+            {note.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag.id}
                 className="bg-primary/10 px-2 py-0.5 rounded text-xs"

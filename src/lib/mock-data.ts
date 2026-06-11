@@ -35,7 +35,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: true,
     isFavorite: false,
     collectionId: "col-1",
-    tags: ["tag-1", "tag-2"],
+    tags: [{ id: "tag-1", name: "React" }, { id: "tag-2", name: "TypeScript" }],
     updatedAt: "2026-03-14",
   },
   {
@@ -46,7 +46,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: true,
     isFavorite: false,
     collectionId: "col-1",
-    tags: ["tag-4", "tag-6"],
+    tags: [{ id: "tag-4", name: "Database" }, { id: "tag-6", name: "Performance" }],
     updatedAt: "2026-03-14",
   },
   {
@@ -68,7 +68,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: false,
     isFavorite: false,
     collectionId: "col-2",
-    tags: ["tag-3"],
+    tags: [{ id: "tag-3", name: "API Design" }],
     updatedAt: "2026-03-14",
   },
   {
@@ -79,7 +79,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: false,
     isFavorite: true,
     collectionId: "col-3",
-    tags: ["tag-8"],
+    tags: [{ id: "tag-8", name: "CSS" }],
     updatedAt: "2026-03-13",
   },
   {
@@ -90,7 +90,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: false,
     isFavorite: false,
     collectionId: "col-1",
-    tags: ["tag-5"],
+    tags: [{ id: "tag-5", name: "Authentication" }],
     updatedAt: "2026-03-12",
   },
   {
@@ -101,7 +101,7 @@ export const MOCK_NOTES: Note[] = [
     isPinned: false,
     isFavorite: false,
     collectionId: "col-5",
-    tags: ["tag-7", "tag-1"],
+    tags: [{ id: "tag-7", name: "Testing" }, { id: "tag-1", name: "React" }],
     updatedAt: "2026-03-11",
   },
   {

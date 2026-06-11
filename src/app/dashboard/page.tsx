@@ -22,7 +22,7 @@ export default async function Page() {
           Recent Notes
         </span>
         <div className="flex-1 flex flex-col">
-          <AppRecentNotes userId={userId} tags={tags} />
+          <AppRecentNotes userId={userId} />
         </div>
       </div>
       <div className="bg-muted p-4 rounded-lg flex flex-col">
@@ -30,7 +30,7 @@ export default async function Page() {
           Pinned Notes
         </span>
         <div className="flex-1 flex flex-col">
-          <AppPinnedNotes userId={userId} tags={tags} />
+          <AppPinnedNotes userId={userId} />
         </div>
       </div>
       <div className="bg-muted p-4 rounded-lg">

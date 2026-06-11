@@ -24,20 +24,19 @@ export async function POST(request: Request) {
         { status: 200 },
       );
     }
-    // generate reset token
+    // Delete any existing reset tokens for this email so only one active token exists at a time.
+    // This prevents old (intercepted) tokens from remaining valid after a new request is made.
+    await prisma.passwordResetToken.deleteMany({ where: { email } });
+
+    // Generate a cryptographically secure random token and set a 1-hour expiry.
     const resetToken = crypto.randomBytes(32).toString("hex");
-    // set expiration time
-    const expire = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expire = new Date(Date.now() + 60 * 60 * 1000);
     await prisma.passwordResetToken.create({
-      data: {
-        email,
-        token: resetToken,
-        expires: expire,
-      },
+      data: { email, token: resetToken, expires: expire },
     });
-    // send email with token
+
+    // Build the reset link and send it via email.
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
-    console.log("Reset Link:", resetLink);
 
     try {
       await resend.emails.send({

@@ -38,7 +38,7 @@ import {
   CollapsibleTrigger,
 } from "../ui/collapsible";
 import LogoutMenuItem from "./LogOutButton";
-import { requireUser, requireUserId } from "@/lib/auth-utils";
+import { requireUser } from "@/lib/auth-utils";
 
 const quickAccessItems = [
   {
@@ -153,7 +153,7 @@ const AppSidebar = async () => {
                   {collections.map((col) => (
                     <SidebarMenuItem key={col.id}>
                       <SidebarMenuButton asChild>
-                        <Link href={`/dashboard1/collection/${col.id}`}>
+                        <Link href={`/dashboard/collection/${col.id}`}>
                           <Folder
                             className={`${col.isFavorite && "text-green-600"}`}
                           />
@@ -192,7 +192,7 @@ const AppSidebar = async () => {
                   {tags.map((tag) => (
                     <SidebarMenuItem key={tag.id}>
                       <SidebarMenuButton asChild>
-                        <Link href={`/dashboard1/tag/${tag.id}`}>
+                        <Link href={`/dashboard/tag/${tag.id}`}>
                           <Bookmark />
                           <span className="text-sm text-muted-foreground">
                             {tag.name}

@@ -1,13 +1,7 @@
-import { Tag } from "@/types/dashboard";
 import { getPinnedNotes } from "@/lib/db/notes";
 import AppNoteCard from "./AppNoteCard";
-const AppPinnedNotes = async ({
-  userId,
-  tags,
-}: {
-  userId: string;
-  tags: Tag[];
-}) => {
+
+const AppPinnedNotes = async ({ userId }: { userId: string }) => {
   const notes = await getPinnedNotes(userId, 2);
   return (
     <div className="h-full flex flex-col gap-3">
@@ -21,12 +15,7 @@ const AppPinnedNotes = async ({
         notes.map((note) => {
           const encodedTitle = encodeURIComponent(note.title);
           return (
-            <AppNoteCard
-              key={note.id}
-              note={note}
-              tags={tags}
-              encodedTitle={encodedTitle}
-            />
+            <AppNoteCard key={note.id} note={note} encodedTitle={encodedTitle} />
           );
         })
       )}

@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+// Enforce minimum password length at the API boundary (mirrors the frontend ResetForm schema).
+const resetSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6),
+});
 
 export async function POST(request: Request) {
   try {
-    const { token, password } = await request.json();
-    if (!token || !password) {
+    const parsed = resetSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        {
-          error: "Token and new password are required.",
-        },
+        { error: "Token and new password are required." },
         { status: 400 },
       );
     }
+    const { token, password } = parsed.data;
     // check token validity
     const storedToken = await prisma.passwordResetToken.findUnique({
       where: { token },

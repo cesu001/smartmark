@@ -1,14 +1,8 @@
 import { getRecentNotes } from "@/lib/db/notes";
 import AppNoteCard from "./AppNoteCard";
 import { Plus } from "lucide-react";
-import { Tag } from "@/types/dashboard";
-const AppRecentNotes = async ({
-  userId,
-  tags,
-}: {
-  userId: string;
-  tags: Tag[];
-}) => {
+
+const AppRecentNotes = async ({ userId }: { userId: string }) => {
   const notes = await getRecentNotes(userId, 3);
   if (notes.length === 0) {
     return (
@@ -30,12 +24,7 @@ const AppRecentNotes = async ({
       {notes.map((note) => {
         const encodedTitle = encodeURIComponent(note.title);
         return (
-          <AppNoteCard
-            key={note.id}
-            note={note}
-            tags={tags}
-            encodedTitle={encodedTitle}
-          />
+          <AppNoteCard key={note.id} note={note} encodedTitle={encodedTitle} />
         );
       })}
     </div>

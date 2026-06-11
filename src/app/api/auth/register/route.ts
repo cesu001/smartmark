@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+// Server-side schema — mirrors the frontend Zod schema but enforced at the API boundary.
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
-    if (!email || !password) {
+    const parsed = registerSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: "Invalid input." },
         { status: 400 },
       );
     }
+    const { email, password } = parsed.data;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json(
