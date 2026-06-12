@@ -1,14 +1,21 @@
-# Current Feature
+# Current Feature: Note Card Actions Menu
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
 <!-- Add goals here -->
+
+- Add a triple-dot (ellipsis) icon button in the top-right corner of `AppNoteCard`
+- Clicking the button opens a shadcn `DropdownMenu` with a "Delete" option
+- Clicking "Delete" opens a shadcn `AlertDialog` confirmation modal
+- Confirming in the modal deletes the note via a `DELETE /api/dashboard/note/[id]` route
+- After successful deletion, refresh the page/list to reflect the removal
+- Use shadcn components throughout (`DropdownMenu`, `AlertDialog`)
 
 ## References
 
