@@ -1,25 +1,16 @@
-# Current Feature: Tag Notes Page
+# Current Feature
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Not Started
 
 ## Goals
 
-- Create a dynamic route `src/app/dashboard/tag/[id]/page.tsx` that displays all notes belonging to a specific tag
-- Layout mirrors the collection notes page: header with tag name + note count, responsive 4-col grid, CTA "Add new note" card first, dashed empty state when no notes
-- Use a `Tag` icon in the header (instead of `Folder`)
-- Add a DB helper `getTagWithNotes(tagId, userId)` in `src/lib/db/tags.ts` — fetches the tag, its associated notes (via `NoteTag`), and each note's tags, with ownership enforcement
-- Wire sidebar tag links to `/dashboard/tag/[id]` so clicking a tag navigates to the new page
+<!-- Add goals here -->
 
 ## References
-
-- `src/app/dashboard/collection/[id]/page.tsx` — layout reference
-- `src/lib/db/collections.ts` → `getCollectionWithNotes` — DB helper pattern
-- `src/lib/db/tags.ts` — where new DB helper goes
-- `src/components/dashboard/AppSidebar.tsx` — sidebar tag links to update
 
 ## Notes
 
@@ -60,3 +51,4 @@ In Progress
 - **2026-06-11** — Applied code audit fixes. Security: added `deleteMany` before creating password reset tokens (one active token per email), added Zod server-side validation to `/api/auth/register` and `/api/auth/reset-password`, removed `console.log` leaking reset URLs to server logs. Fixed broken sidebar links (`/dashboard1/` → `/dashboard/`). Optimized note queries: `Note.tags` type changed from `string[]` to `{ id, name }[]`, Prisma join now fetches tag names inline — eliminated separate `getAllTags` call and JS-side filter in `AppNoteCard`. Cleaned up unused imports and fixed typos (`passsword`, `errorResilt`).
 - **2026-06-12** — Added `isFavorite Boolean @default(false)` to the `Tag` model. Created and applied migration `20260612061912_add_tag_is_favorite` (safe `ALTER TABLE` with non-null default). Updated `Tag` interface in `src/types/dashboard.ts`, mapped `isFavorite` in `getAllTags` in `src/lib/db/tags.ts`, and updated `MOCK_TAGS` in `src/lib/mock-data.ts` to satisfy the interface.
 - **2026-06-12** — Built collection notes page. Created `src/app/dashboard/collection/[id]/page.tsx` showing all notes in a collection in a 4-col responsive grid matching the `allnotes` layout (CTA card first, dashed empty state when empty, `AppNoteCard` for each note). Added `getCollectionWithNotes(collectionId, userId)` to `src/lib/db/collections.ts` — fetches collection + notes + tags in one query with ownership enforcement via `userId`. Sidebar collection links (already wired to `/dashboard/collection/[id]`) now navigate to the live page.
+- **2026-06-12** — Built tag notes page. Created `src/app/dashboard/tag/[id]/page.tsx` showing all notes for a tag in a 4-col responsive grid matching the collection notes layout (Tag icon in header, CTA card first, dashed empty state when empty, `AppNoteCard` for each note). Added `getTagWithNotes(tagId, userId)` to `src/lib/db/tags.ts` — fetches tag + notes via `NoteTag` join with ownership enforcement. Sidebar tag links (already wired to `/dashboard/tag/[id]`) now navigate to the live page.
