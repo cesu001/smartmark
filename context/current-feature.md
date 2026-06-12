@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Tag Notes Page
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Create a dynamic route `src/app/dashboard/tag/[id]/page.tsx` that displays all notes belonging to a specific tag
+- Layout mirrors the collection notes page: header with tag name + note count, responsive 4-col grid, CTA "Add new note" card first, dashed empty state when no notes
+- Use a `Tag` icon in the header (instead of `Folder`)
+- Add a DB helper `getTagWithNotes(tagId, userId)` in `src/lib/db/tags.ts` — fetches the tag, its associated notes (via `NoteTag`), and each note's tags, with ownership enforcement
+- Wire sidebar tag links to `/dashboard/tag/[id]` so clicking a tag navigates to the new page
 
 ## References
+
+- `src/app/dashboard/collection/[id]/page.tsx` — layout reference
+- `src/lib/db/collections.ts` → `getCollectionWithNotes` — DB helper pattern
+- `src/lib/db/tags.ts` — where new DB helper goes
+- `src/components/dashboard/AppSidebar.tsx` — sidebar tag links to update
 
 ## Notes
 
