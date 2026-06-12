@@ -19,7 +19,6 @@ import {
   Folder,
   Heart,
   Notebook,
-  Plus,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -40,6 +39,7 @@ import {
 import LogoutMenuItem from "./LogOutButton";
 import { requireUser } from "@/lib/auth-utils";
 import SidebarAddCollection from "./SidebarAddCollection";
+import SidebarAddTag from "./SidebarAddTag";
 
 const quickAccessItems = [
   {
@@ -204,9 +204,7 @@ const AppSidebar = async () => {
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
-                <SidebarMenuButton className="justify-center transition-all duration-300 ease-in-out hover:text-green-400 hover:scale-105">
-                  <Plus className="w-6 h-6" />
-                </SidebarMenuButton>
+                <SidebarAddTag />
               </SidebarGroupContent>
             </CollapsibleContent>
           </SidebarGroup>
