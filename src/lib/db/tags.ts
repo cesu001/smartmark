@@ -41,6 +41,20 @@ export async function getTagWithNotes(
   };
 }
 
+export async function getFavoriteTags(userId: string): Promise<Tag[]> {
+  const tags = await prisma.tag.findMany({
+    where: { userId, isFavorite: true },
+    include: { _count: { select: { notes: true } } },
+  });
+  return tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    isAiGenerated: tag.isAiGenerated,
+    isFavorite: tag.isFavorite,
+    noteCount: tag._count.notes,
+  }));
+}
+
 export async function getAllTags(userId: string): Promise<Tag[]> {
   const tags = await prisma.tag.findMany({
     where: { userId },

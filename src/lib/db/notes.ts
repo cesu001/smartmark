@@ -61,6 +61,15 @@ export async function getRecentNotes(
   return notes.map(mapNote);
 }
 
+export async function getFavoriteNotes(userId: string): Promise<Note[]> {
+  const notes = await prisma.note.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: { updatedAt: "desc" },
+    include: noteTagInclude,
+  });
+  return notes.map(mapNote);
+}
+
 export async function getPinnedNotes(
   userId: string,
   limit?: number,

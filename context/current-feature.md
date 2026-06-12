@@ -1,16 +1,24 @@
-# Current Feature
+# Current Feature: Favorites Page
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Create `/dashboard/favorites` page with 3 sections: Favorite Notes, Favorite Collections, Favorite Tags
+- Reuse existing `AppNoteCard`, `AppColCard`, and `AppTagCard` components
+- No "Add" CTA cards or buttons (read-only view of favorited items)
+- Page accessible via the sidebar Quick Access "Favorites" link (already wired to `/dashboard/favorites`)
 
 ## References
+
+- Spec: `context/features/fav-page-spec.md`
+- Related pages: `src/app/dashboard/allnotes/page.tsx`, `src/app/dashboard/pinned/page.tsx`
+- Existing card components: `src/components/dashboard/AppNoteCard.tsx`, `src/components/dashboard/AppColCard.tsx`, `src/components/dashboard/AppTagCard.tsx`
+- DB helpers: `src/lib/db/notes.ts`, `src/lib/db/collections.ts`, `src/lib/db/tags.ts`
 
 ## Notes
 
