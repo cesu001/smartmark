@@ -8,14 +8,14 @@ export const MOCK_USER: User = {
 };
 
 export const MOCK_TAGS: Tag[] = [
-  { id: "tag-1", name: "React", noteCount: 24, isAiGenerated: false },
-  { id: "tag-2", name: "TypeScript", noteCount: 17, isAiGenerated: false },
-  { id: "tag-3", name: "API Design", noteCount: 9, isAiGenerated: false },
-  { id: "tag-4", name: "Database", noteCount: 8, isAiGenerated: false },
-  { id: "tag-5", name: "Authentication", noteCount: 6, isAiGenerated: false },
-  { id: "tag-6", name: "Performance", noteCount: 5, isAiGenerated: false },
-  { id: "tag-7", name: "Testing", noteCount: 4, isAiGenerated: false },
-  { id: "tag-8", name: "CSS", noteCount: 11, isAiGenerated: false },
+  { id: "tag-1", name: "React", noteCount: 24, isAiGenerated: false, isFavorite: false },
+  { id: "tag-2", name: "TypeScript", noteCount: 17, isAiGenerated: false, isFavorite: false },
+  { id: "tag-3", name: "API Design", noteCount: 9, isAiGenerated: false, isFavorite: false },
+  { id: "tag-4", name: "Database", noteCount: 8, isAiGenerated: false, isFavorite: false },
+  { id: "tag-5", name: "Authentication", noteCount: 6, isAiGenerated: false, isFavorite: false },
+  { id: "tag-6", name: "Performance", noteCount: 5, isAiGenerated: false, isFavorite: false },
+  { id: "tag-7", name: "Testing", noteCount: 4, isAiGenerated: false, isFavorite: false },
+  { id: "tag-8", name: "CSS", noteCount: 11, isAiGenerated: false, isFavorite: false },
 ];
 
 export const MOCK_COLLECTIONS: Collection[] = [

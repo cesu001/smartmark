@@ -18,7 +18,7 @@ export async function getAllTags(userId: string): Promise<Tag[]> {
     id: tag.id,
     name: tag.name,
     isAiGenerated: tag.isAiGenerated,
-    // 將 Prisma 計算出的數量填入 noteCount
+    isFavorite: tag.isFavorite,
     noteCount: tag._count.notes,
   }));
 }

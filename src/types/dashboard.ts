@@ -17,6 +17,7 @@ export interface Tag {
   name: string;
   noteCount: number;
   isAiGenerated: boolean;
+  isFavorite: boolean;
 }
 
 export interface Note {
