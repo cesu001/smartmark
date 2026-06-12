@@ -39,6 +39,7 @@ import {
 } from "../ui/collapsible";
 import LogoutMenuItem from "./LogOutButton";
 import { requireUser } from "@/lib/auth-utils";
+import SidebarAddCollection from "./SidebarAddCollection";
 
 const quickAccessItems = [
   {
@@ -168,9 +169,7 @@ const AppSidebar = async () => {
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
-                <SidebarMenuButton className="justify-center transition-all duration-300 ease-in-out hover:text-green-400 hover:scale-105">
-                  <Plus className="w-6 h-6" />
-                </SidebarMenuButton>
+                <SidebarAddCollection />
               </SidebarGroupContent>
             </CollapsibleContent>
           </SidebarGroup>
