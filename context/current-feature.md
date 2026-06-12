@@ -1,26 +1,21 @@
-# Current Feature: Sidebar Add Collection
+# Current Feature
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add a plus icon button in the sidebar under the Collections section
-- Clicking the plus icon reveals an inline input field for the collection name and an "Add" button
-- Submitting creates a new collection via `POST /api/dashboard/collection`
-- The new collection appears in the sidebar without a full page reload
+<!-- Add goals here -->
 
 ## References
 
-- [sidebar-add-collection-spec.md](features/sidebar-add-collection-spec.md)
-
 ## Notes
 
-- API route: `src/app/api/dashboard/collection/route.ts`
-- The sidebar is `src/components/app-sidebar.tsx` (or similar) — identify the Collections section and wire the inline form there
+<!-- Add notes here -->
+
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - Workbench tab wiring (tabs not controlled, close buttons have no handler) is deferred — part of the upcoming editor feature scope
 
@@ -57,3 +52,4 @@ In Progress
 - **2026-06-12** — Added `isFavorite Boolean @default(false)` to the `Tag` model. Created and applied migration `20260612061912_add_tag_is_favorite` (safe `ALTER TABLE` with non-null default). Updated `Tag` interface in `src/types/dashboard.ts`, mapped `isFavorite` in `getAllTags` in `src/lib/db/tags.ts`, and updated `MOCK_TAGS` in `src/lib/mock-data.ts` to satisfy the interface.
 - **2026-06-12** — Built collection notes page. Created `src/app/dashboard/collection/[id]/page.tsx` showing all notes in a collection in a 4-col responsive grid matching the `allnotes` layout (CTA card first, dashed empty state when empty, `AppNoteCard` for each note). Added `getCollectionWithNotes(collectionId, userId)` to `src/lib/db/collections.ts` — fetches collection + notes + tags in one query with ownership enforcement via `userId`. Sidebar collection links (already wired to `/dashboard/collection/[id]`) now navigate to the live page.
 - **2026-06-12** — Built tag notes page. Created `src/app/dashboard/tag/[id]/page.tsx` showing all notes for a tag in a 4-col responsive grid matching the collection notes layout (Tag icon in header, CTA card first, dashed empty state when empty, `AppNoteCard` for each note). Added `getTagWithNotes(tagId, userId)` to `src/lib/db/tags.ts` — fetches tag + notes via `NoteTag` join with ownership enforcement. Sidebar tag links (already wired to `/dashboard/tag/[id]`) now navigate to the live page.
+- **2026-06-12** — Added sidebar inline collection creation. Plus icon under the Collections section expands an inline form (`Input` + confirm/cancel `Button`s using shadcn/ui). Submits to `POST /api/dashboard/collection` (Zod-validated, Prisma create, 201). On success: collapses the form, calls `router.refresh()` to re-fetch the sidebar server component, and shows a `toast.success`. On failure: shows `toast.error`. Cancel button and Escape key both dismiss the form. X button sized and positioned (`h-5 w-5`, `pr-1`) to align with the note-count badges above it. Playwright MCP configured to use Firefox (`--browser firefox` in `.mcp.json`).
