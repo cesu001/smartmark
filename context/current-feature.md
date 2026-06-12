@@ -1,24 +1,16 @@
-# Current Feature: Favorites Page
+# Current Feature
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Not Started
 
 ## Goals
 
-- Create `/dashboard/favorites` page with 3 sections: Favorite Notes, Favorite Collections, Favorite Tags
-- Reuse existing `AppNoteCard`, `AppColCard`, and `AppTagCard` components
-- No "Add" CTA cards or buttons (read-only view of favorited items)
-- Page accessible via the sidebar Quick Access "Favorites" link (already wired to `/dashboard/favorites`)
+<!-- Add goals here -->
 
 ## References
-
-- Spec: `context/features/fav-page-spec.md`
-- Related pages: `src/app/dashboard/allnotes/page.tsx`, `src/app/dashboard/pinned/page.tsx`
-- Existing card components: `src/components/dashboard/AppNoteCard.tsx`, `src/components/dashboard/AppColCard.tsx`, `src/components/dashboard/AppTagCard.tsx`
-- DB helpers: `src/lib/db/notes.ts`, `src/lib/db/collections.ts`, `src/lib/db/tags.ts`
 
 ## Notes
 
@@ -63,3 +55,4 @@ In Progress
 - **2026-06-12** — Added sidebar inline collection creation. Plus icon under the Collections section expands an inline form (`Input` + confirm/cancel `Button`s using shadcn/ui). Submits to `POST /api/dashboard/collection` (Zod-validated, Prisma create, 201). On success: collapses the form, calls `router.refresh()` to re-fetch the sidebar server component, and shows a `toast.success`. On failure: shows `toast.error`. Cancel button and Escape key both dismiss the form. X button sized and positioned (`h-5 w-5`, `pr-1`) to align with the note-count badges above it. Playwright MCP configured to use Firefox (`--browser firefox` in `.mcp.json`).
 - **2026-06-12** — Added sidebar inline tag creation. `SidebarAddTag` client component and `POST /api/dashboard/tag` route mirror the collection creation pattern. Plus icon under the Tags section expands an inline form; on success collapses form, calls `router.refresh()`, and shows `toast.success`. Replaced static Plus button in `AppSidebar` Tags section with `<SidebarAddTag />`.
 - **2026-06-12** — Made collection and tag cards on the dashboard clickable. `AppColCard` wraps in a `next/link` to `/dashboard/collection/[id]`; `AppTagCard` wraps in a `next/link` to `/dashboard/tag/[id]`. Both have pointer cursor and subtle hover style (`hover:bg-accent` / `hover:bg-primary/20`).
+- **2026-06-12** — Built favorites page. Created `src/app/dashboard/favorites/page.tsx` with 3 sections (Favorite Notes, Favorite Collections, Favorite Tags), each with a dashed empty state. Added `getFavoriteNotes` to `src/lib/db/notes.ts` and `getFavoriteTags` to `src/lib/db/tags.ts`; reused existing `getFavCollection`. All 3 queries run in parallel via `Promise.all`. Reuses `AppNoteCard`, `AppColCard`, and `AppTagCard` — no new card components. No add/CTA buttons.
