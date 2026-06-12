@@ -1,4 +1,5 @@
 import { Folder, Star } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent } from "../ui/card";
 
 interface ColProps {
@@ -13,18 +14,20 @@ interface ColProps {
 
 const AppColCard = ({ col }: { col: ColProps }) => {
   return (
-    <Card>
-      <CardContent className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Folder />
-          <div className="flex flex-col">
-            <span className="font-semibold truncate">{col.name}</span>
-            <span>{col._count.notes} notes</span>
+    <Link href={`/dashboard/collection/${col.id}`} className="block">
+      <Card className="cursor-pointer hover:bg-accent transition-colors">
+        <CardContent className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Folder />
+            <div className="flex flex-col">
+              <span className="font-semibold truncate">{col.name}</span>
+              <span>{col._count.notes} notes</span>
+            </div>
           </div>
-        </div>
-        {col.isFavorite && <Star className="text-green-400" size={20} />}
-      </CardContent>
-    </Card>
+          {col.isFavorite && <Star className="text-green-400" size={20} />}
+        </CardContent>
+      </Card>
+    </Link>
   );
 };
 
