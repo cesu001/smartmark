@@ -1,21 +1,26 @@
-# Current Feature
+# Current Feature: Sidebar Add Collection
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add a plus icon button in the sidebar under the Collections section
+- Clicking the plus icon reveals an inline input field for the collection name and an "Add" button
+- Submitting creates a new collection via `POST /api/dashboard/collection`
+- The new collection appears in the sidebar without a full page reload
 
 ## References
 
+- [sidebar-add-collection-spec.md](features/sidebar-add-collection-spec.md)
+
 ## Notes
 
-<!-- Add notes here -->
-
+- API route: `src/app/api/dashboard/collection/route.ts`
+- The sidebar is `src/components/app-sidebar.tsx` (or similar) — identify the Collections section and wire the inline form there
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - Workbench tab wiring (tabs not controlled, close buttons have no handler) is deferred — part of the upcoming editor feature scope
 
