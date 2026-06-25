@@ -1,20 +1,16 @@
-# Current Feature: Note Drawer Polish
+# Current Feature
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
-
 ## Goals
 
-- Add a visible border around the NoteDrawer to visually separate it from the rest of the workbench
-- Add a lucide icon to the Save/Add submit button (e.g. `Save` icon for existing notes, `Plus` icon for new notes)
-- Add a folder icon next to the collection name in the drawer's read-mode metadata row
+<!-- Add goals here -->
 
 ## References
 
-- NoteDrawer component: `src/components/dashboard/NoteDrawer.tsx`
+<!-- Add references here -->
 
 ## Notes
 
@@ -61,3 +57,4 @@ In Progress
 - **2026-06-12** — Made collection and tag cards on the dashboard clickable. `AppColCard` wraps in a `next/link` to `/dashboard/collection/[id]`; `AppTagCard` wraps in a `next/link` to `/dashboard/tag/[id]`. Both have pointer cursor and subtle hover style (`hover:bg-accent` / `hover:bg-primary/20`).
 - **2026-06-12** — Built favorites page. Created `src/app/dashboard/favorites/page.tsx` with 3 sections (Favorite Notes, Favorite Collections, Favorite Tags), each with a dashed empty state. Added `getFavoriteNotes` to `src/lib/db/notes.ts` and `getFavoriteTags` to `src/lib/db/tags.ts`; reused existing `getFavCollection`. All 3 queries run in parallel via `Promise.all`. Reuses `AppNoteCard`, `AppColCard`, and `AppTagCard` — no new card components. No add/CTA buttons.
 - **2026-06-12** — Added note card actions menu. `AppNoteCard` converted to a client component with a `MoreHorizontal` triple-dot button inline with the title. Clicking opens a shadcn `DropdownMenu` with a Delete option. Delete triggers a shadcn `AlertDialog` confirmation modal (full-width description, stacked buttons, title truncated at 20 chars). Confirmed deletion calls `DELETE /api/dashboard/note/[id]` (ownership-enforced via `requireUserId`), then `router.refresh()`. Success/failure feedback via sonner toasts. Added `src/components/ui/alert-dialog.tsx`.
+- **2026-06-25** — Built Note Drawer with WYSIWYG Tiptap editor. `NoteDrawer` client component renders below the workbench tab bar: read mode shows rendered markdown (`prose` + `@tailwindcss/typography`); edit mode is live WYSIWYG via `StarterKit` + `tiptap-markdown`. Header row shows title input, Edit/Read toggle, and Save/Add submit button (with `Save`/`Plus` lucide icons). Meta row shows collection `Select` (required) and tags multi-select (`Popover` + `Command`) in edit mode; in read mode shows collection name with `Folder` icon and tag `Badge`s. Added `POST /api/dashboard/note` (create), `GET+PUT /api/dashboard/note/[id]` (fetch/update), `GET /api/dashboard/collection`, `GET /api/dashboard/tag`. Dashboard layout updated to propagate `h-screen` height so workbench fills the viewport. Workbench container styled as a bordered `rounded-xl` panel with the drawer content separated from the tab bar. Light-mode code block colors overridden in `globals.css`.
