@@ -3,6 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireUserId } from "@/lib/auth-utils";
 
+export async function GET() {
+  const userId = await requireUserId();
+  const collections = await prisma.collection.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  return NextResponse.json(collections);
+}
+
 const createCollectionSchema = z.object({
   name: z.string().min(1).max(100),
 });

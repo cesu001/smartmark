@@ -1,16 +1,20 @@
-# Current Feature
+# Current Feature: Note Drawer Polish
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add a visible border around the NoteDrawer to visually separate it from the rest of the workbench
+- Add a lucide icon to the Save/Add submit button (e.g. `Save` icon for existing notes, `Plus` icon for new notes)
+- Add a folder icon next to the collection name in the drawer's read-mode metadata row
 
 ## References
+
+- NoteDrawer component: `src/components/dashboard/NoteDrawer.tsx`
 
 ## Notes
 

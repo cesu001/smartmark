@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -147,4 +148,21 @@ html:not(.dark) {
   html {
     @apply font-sans;
   }
+}
+
+/* Code blocks in light mode only */
+html:not(.dark) .prose pre {
+  background-color: oklch(0.94 0 0) !important;
+  color: oklch(0.15 0 0) !important;
+}
+
+html:not(.dark) .prose pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+}
+
+html:not(.dark) .prose code:not(pre > code) {
+  background-color: oklch(0.92 0 0) !important;
+  color: oklch(0.15 0 0) !important;
 }

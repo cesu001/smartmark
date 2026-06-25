@@ -82,3 +82,14 @@ export async function getPinnedNotes(
   });
   return notes.map(mapNote);
 }
+
+export async function getNoteById(
+  noteId: string,
+  userId: string,
+): Promise<Note | null> {
+  const note = await prisma.note.findFirst({
+    where: { id: noteId, userId },
+    include: noteTagInclude,
+  });
+  return note ? mapNote(note) : null;
+}

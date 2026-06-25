@@ -1,10 +1,10 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, LayoutDashboard, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
+import NoteDrawer from "@/components/dashboard/NoteDrawer";
 
 interface Tab {
   id: string;
@@ -43,8 +43,8 @@ function WorkbenchContent() {
     }
   }, [activeTabId, currentTitle, tabsParam, router]);
   return (
-    <div className="w-full flex flex-col bg-background">
-      <div className="flex items-center gap-2 bg-muted/40 border-b px-4 py-2 rounded-t-xl select-none overflow-x-auto">
+    <div className="w-full flex flex-col gap-3 bg-background h-full overflow-hidden">
+      <div className="flex items-center gap-2 bg-muted/40 border-b border-muted-foreground/30 px-4 py-2 select-none overflow-x-auto">
         <Button
           variant="outline"
           size="sm"
@@ -77,7 +77,9 @@ function WorkbenchContent() {
           </Tabs>
         )}
       </div>
-      <ScrollArea></ScrollArea>
+      <div className="flex-1 min-h-0 overflow-hidden border border-muted-foreground/25 rounded-xl">
+        <NoteDrawer noteId={activeTabId || null} />
+      </div>
     </div>
   );
 }
