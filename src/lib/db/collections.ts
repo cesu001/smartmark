@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/db";
 import type { Note } from "@/types/dashboard";
 
+export async function getAllCollections(
+  userId: string,
+): Promise<{ id: string; name: string }[]> {
+  return prisma.collection.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
 export async function getCollectionStats(
   userId: string,
 ): Promise<{ total: number; favorites: number }> {
