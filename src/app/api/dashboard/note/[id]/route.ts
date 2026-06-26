@@ -28,12 +28,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
     isPinned: note.isPinned,
     isFavorite: note.isFavorite,
     tags: note.tags.map((t) => t.tag),
+    createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString(),
   });
 }
 
 const updateNoteSchema = z.object({
   title: z.string().min(1).max(255),
-  collectionId: z.string().min(1),
+  collectionId: z.string().min(1).optional().nullable(),
   tagIds: z.array(z.string()).default([]),
   content: z.string().default(""),
 });
@@ -56,7 +58,16 @@ export async function PUT(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const { title, collectionId, tagIds, content } = parsed.data;
+  const { title, tagIds, content } = parsed.data;
+  let { collectionId } = parsed.data;
+
+  if (!collectionId) {
+    let draft = await prisma.collection.findFirst({ where: { userId, name: "Draft" } });
+    if (!draft) {
+      draft = await prisma.collection.create({ data: { name: "Draft", userId } });
+    }
+    collectionId = draft.id;
+  }
 
   const note = await prisma.note.update({
     where: { id },
@@ -71,7 +82,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     },
   });
 
-  return NextResponse.json({ id: note.id });
+  return NextResponse.json({ id: note.id, collectionId: note.collectionId });
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
