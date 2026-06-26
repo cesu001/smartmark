@@ -16,7 +16,6 @@ import {
   Bookmark,
   ChevronDown,
   CircleUser,
-  Folder,
   Heart,
   Notebook,
   Settings,
@@ -40,6 +39,7 @@ import LogoutMenuItem from "./LogOutButton";
 import { requireUser } from "@/lib/auth-utils";
 import SidebarAddCollection from "./SidebarAddCollection";
 import SidebarAddTag from "./SidebarAddTag";
+import SidebarHoverMenuItem from "./SidebarHoverMenuItem";
 
 const quickAccessItems = [
   {
@@ -152,21 +152,14 @@ const AppSidebar = async () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {collections.map((col) => (
-                    <SidebarMenuItem key={col.id}>
-                      <SidebarMenuButton asChild>
-                        <Link href={`/dashboard/collection/${col.id}`}>
-                          <Folder
-                            className={`${col.isFavorite && "text-green-600"}`}
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {col.name}
-                          </span>
-                          <SidebarMenuBadge>
-                            {col._count.notes}
-                          </SidebarMenuBadge>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <SidebarHoverMenuItem
+                      key={col.id}
+                      type="collection"
+                      id={col.id}
+                      name={col.name}
+                      noteCount={col._count.notes}
+                      isFavorite={col.isFavorite}
+                    />
                   ))}
                 </SidebarMenu>
                 <SidebarAddCollection />
@@ -189,19 +182,13 @@ const AppSidebar = async () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {tags.map((tag) => (
-                    <SidebarMenuItem key={tag.id}>
-                      <SidebarMenuButton asChild>
-                        <Link href={`/dashboard/tag/${tag.id}`}>
-                          <Bookmark />
-                          <span className="text-sm text-muted-foreground">
-                            {tag.name}
-                          </span>
-                          <SidebarMenuBadge>
-                            {tag._count.notes}
-                          </SidebarMenuBadge>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <SidebarHoverMenuItem
+                      key={tag.id}
+                      type="tag"
+                      id={tag.id}
+                      name={tag.name}
+                      noteCount={tag._count.notes}
+                    />
                   ))}
                 </SidebarMenu>
                 <SidebarAddTag />

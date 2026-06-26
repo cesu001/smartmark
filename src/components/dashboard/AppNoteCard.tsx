@@ -84,7 +84,9 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
         </CardTitle>
-        <CardContent className="line-clamp-3">{note.content}</CardContent>
+        <CardContent className="line-clamp-3 h-full">
+          {note.content}
+        </CardContent>
         <CardFooter>
           <div className="w-full flex items-center justify-between gap-2 mt-auto">
             <div className="flex gap-1">
@@ -97,7 +99,9 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
                 </span>
               ))}
             </div>
-            <span className="text-text-secondary shrink-0">{note.updatedAt}</span>
+            <span className="text-text-secondary shrink-0">
+              {note.updatedAt}
+            </span>
           </div>
         </CardFooter>
       </Card>
@@ -105,9 +109,15 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader className="place-items-stretch sm:place-items-stretch text-left">
-            <AlertDialogTitle className="text-xl font-bold">Delete note?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-bold">
+              Delete note?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-base font-semibold [text-wrap:unset]">
-              &ldquo;{note.title.length > 20 ? note.title.slice(0, 20) + "…" : note.title}&rdquo; will be permanently deleted. This action cannot be undone.
+              &ldquo;
+              {note.title.length > 20
+                ? note.title.slice(0, 20) + "…"
+                : note.title}
+              &rdquo; will be permanently deleted. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
