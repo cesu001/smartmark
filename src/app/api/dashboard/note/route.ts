@@ -5,7 +5,7 @@ import { requireUserId } from "@/lib/auth-utils";
 
 const createNoteSchema = z.object({
   title: z.string().min(1).max(255),
-  collectionId: z.string().min(1),
+  collectionId: z.string().min(1).optional().nullable(),
   tagIds: z.array(z.string()).default([]),
   content: z.string().default(""),
 });

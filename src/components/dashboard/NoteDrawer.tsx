@@ -5,7 +5,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { toast } from "sonner";
-import { Check, Eye, Folder, Pencil, Plus, Save, Tag } from "lucide-react";
+import { Check, Eye, Folder, Pencil, Save, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -47,16 +47,28 @@ interface NoteData {
   content: string;
   collectionId: string | null;
   tags: { id: string; name: string }[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface NoteDrawerProps {
-  noteId: string | null;
+  noteId: string;
+  startInEditMode?: boolean;
+  onEditModeChange?: (isEditMode: boolean) => void;
 }
 
-export default function NoteDrawer({ noteId }: NoteDrawerProps) {
-  const isNewNote = !noteId;
+type SaveStatus = "idle" | "saving" | "saved";
 
-  const [isEditMode, setIsEditMode] = useState(isNewNote);
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }: NoteDrawerProps) {
+  const [isEditMode, setIsEditMode] = useState(startInEditMode ?? false);
   const [title, setTitle] = useState("Untitled Note");
   const [collectionId, setCollectionId] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -64,8 +76,18 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
   const [tags, setTags] = useState<SimpleTag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
-  // Store content to set once editor is ready
+  const isLoaded = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always-current save function — avoids stale closures inside setTimeout
+  const doAutoSaveRef = useRef<() => Promise<boolean>>(async () => false);
+  // Stable ref so the editor's onUpdate (captured once at creation) always calls the latest scheduler
+  const scheduleAutoSaveRef = useRef<() => void>(() => {});
+
   const pendingContent = useRef<string | null>(null);
 
   const editor = useEditor({
@@ -84,7 +106,17 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
         pendingContent.current = null;
       }
     },
+    onUpdate() {
+      scheduleAutoSaveRef.current();
+    },
   });
+
+  // Update scheduleAutoSaveRef every render so editor's onUpdate always calls latest version
+  scheduleAutoSaveRef.current = () => {
+    if (!isLoaded.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => doAutoSaveRef.current(), 1000);
+  };
 
   // Sync edit mode → editor editable state
   useEffect(() => {
@@ -117,16 +149,16 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
 
   // Load note data when noteId changes
   useEffect(() => {
-    if (!noteId) {
-      setTitle("Untitled Note");
-      setCollectionId("");
-      setSelectedTagIds([]);
-      setEditorContent("");
-      setIsEditMode(true);
-      return;
-    }
-
-    setIsEditMode(false);
+    isLoaded.current = false;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setIsEditMode(startInEditMode ?? false);
+    setTitle("Untitled Note");
+    setCollectionId("");
+    setSelectedTagIds([]);
+    setCreatedAt(null);
+    setUpdatedAt(null);
+    setSaveStatus("idle");
+    setEditorContent("");
 
     async function loadNote() {
       const res = await fetch(`/api/dashboard/note/${noteId}`);
@@ -138,48 +170,66 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
       setTitle(note.title);
       setCollectionId(note.collectionId ?? "");
       setSelectedTagIds(note.tags.map((t) => t.id));
+      setCreatedAt(note.createdAt);
+      setUpdatedAt(note.updatedAt);
       setEditorContent(note.content ?? "");
+      isLoaded.current = true;
     }
     loadNote();
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
+    };
+  // startInEditMode intentionally omitted: only consumed on noteId change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId, setEditorContent]);
 
+  // Keep doAutoSaveRef current whenever relevant state changes
+  useEffect(() => {
+    doAutoSaveRef.current = async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
+      setSaveStatus("saving");
+      try {
+        const res = await fetch(`/api/dashboard/note/${noteId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, collectionId: collectionId || null, tagIds: selectedTagIds, content }),
+        });
+        if (!res.ok) throw new Error();
+        const data: { id: string; collectionId: string } = await res.json();
+        // Server may have assigned a Draft collection — sync it to UI
+        if (data.collectionId && !collectionId) {
+          setCollectionId(data.collectionId);
+          fetch("/api/dashboard/collection")
+            .then((r) => { if (r.ok) r.json().then(setCollections); })
+            .catch(() => null);
+        }
+        setUpdatedAt(new Date().toISOString());
+        setSaveStatus("saved");
+        if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
+        savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+        return true;
+      } catch {
+        setSaveStatus("idle");
+        return false;
+      }
+    };
+  }, [noteId, title, collectionId, selectedTagIds, editor]);
+
   async function handleSubmit() {
-    if (!collectionId) {
-      toast.error("Please select a collection");
-      return;
-    }
-
-    // tiptap-markdown doesn't export storage types; any is intentional here
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     setIsSubmitting(true);
-
-    try {
-      const body = { title, collectionId, tagIds: selectedTagIds, content };
-      const res = isNewNote
-        ? await fetch("/api/dashboard/note", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          })
-        : await fetch(`/api/dashboard/note/${noteId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-
-      if (!res.ok) throw new Error();
-      toast.success(isNewNote ? "Note created" : "Note saved");
+    const ok = await doAutoSaveRef.current();
+    setIsSubmitting(false);
+    if (ok) {
       setIsEditMode(false);
-    } catch {
-      toast.error("Failed to save note");
-    } finally {
-      setIsSubmitting(false);
+      onEditModeChange?.(false);
     }
   }
 
-  const collectionName =
-    collections.find((c) => c.id === collectionId)?.name ?? null;
+  const collectionName = collections.find((c) => c.id === collectionId)?.name ?? null;
   const selectedTags = tags.filter((t) => selectedTagIds.includes(t.id));
 
   return (
@@ -192,7 +242,10 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
             {isEditMode ? (
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  scheduleAutoSaveRef.current();
+                }}
                 placeholder="Note title"
                 className="text-base font-semibold border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
               />
@@ -200,10 +253,20 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
               <h2 className="text-base font-semibold truncate">{title}</h2>
             )}
           </div>
+          {saveStatus === "saving" && (
+            <span className="text-xs text-muted-foreground shrink-0">Saving…</span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="text-xs text-green-500 shrink-0">Saved</span>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsEditMode((v) => !v)}
+            onClick={() => {
+              const next = !isEditMode;
+              setIsEditMode(next);
+              onEditModeChange?.(next);
+            }}
             className="h-8 gap-1.5 shrink-0"
           >
             {isEditMode ? (
@@ -222,16 +285,10 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || saveStatus === "saving"}
               className="h-8 shrink-0"
             >
-              {isSubmitting ? (
-                "Saving…"
-              ) : isNewNote ? (
-                <><Plus className="h-3.5 w-3.5" />Add</>
-              ) : (
-                <><Save className="h-3.5 w-3.5" />Save</>
-              )}
+              {isSubmitting || saveStatus === "saving" ? "Saving…" : <><Save className="h-3.5 w-3.5" />Save</>}
             </Button>
           )}
         </div>
@@ -239,9 +296,15 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
         {/* Meta row */}
         {isEditMode ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={collectionId} onValueChange={setCollectionId}>
+            <Select
+              value={collectionId}
+              onValueChange={(v) => {
+                setCollectionId(v);
+                scheduleAutoSaveRef.current();
+              }}
+            >
               <SelectTrigger className="h-7 w-44 text-xs">
-                <SelectValue placeholder="Collection (required)" />
+                <SelectValue placeholder="Collection (optional)" />
               </SelectTrigger>
               <SelectContent>
                 {collections.map((c) => (
@@ -277,11 +340,13 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
                             value={tag.name}
                             className="text-xs"
                             onSelect={() => {
-                              setSelectedTagIds((prev) =>
-                                checked
+                              setSelectedTagIds((prev) => {
+                                const next = checked
                                   ? prev.filter((id) => id !== tag.id)
-                                  : [...prev, tag.id],
-                              );
+                                  : [...prev, tag.id];
+                                scheduleAutoSaveRef.current();
+                                return next;
+                              });
                             }}
                           >
                             <Check
@@ -313,6 +378,14 @@ export default function NoteDrawer({ noteId }: NoteDrawerProps) {
                 {tag.name}
               </Badge>
             ))}
+          </div>
+        )}
+
+        {/* Timestamps row */}
+        {(createdAt || updatedAt) && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {createdAt && <span>Created: {formatDate(createdAt)}</span>}
+            {updatedAt && <span>Updated: {formatDate(updatedAt)}</span>}
           </div>
         )}
       </div>
