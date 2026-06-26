@@ -114,7 +114,7 @@ function WorkbenchContent() {
         </Button>
         {tabs.length > 0 && (
           <Tabs value={activeTabId}>
-            <TabsList>
+            <TabsList className="gap-2 bg-transparent p-0">
               {tabs.map((tab) => {
                 const isActive = tab.id === activeTabId;
                 return (
