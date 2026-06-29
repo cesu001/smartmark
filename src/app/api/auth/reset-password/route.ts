@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { applyRateLimit, getIP, resetPasswordLimiter } from "@/lib/rate-limit";
 
 // Enforce minimum password length at the API boundary (mirrors the frontend ResetForm schema).
 const resetSchema = z.object({
@@ -11,6 +12,9 @@ const resetSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const limited = await applyRateLimit(resetPasswordLimiter, getIP(request));
+    if (limited) return limited;
+
     const parsed = resetSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
