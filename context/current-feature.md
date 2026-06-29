@@ -1,28 +1,19 @@
-# Current Feature: Profile Page
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Create profile page at `/dashboard/profile` route (protected, requires auth)
-- Display user info: name, email, avatar (GitHub image or initials fallback), account creation date
-- Show usage stats: total notes, total collections, total tags, total favorite items
-- Add "Change Password" action — visible only for email/password users (not GitHub OAuth)
-- Add "Delete Account" action with confirmation dialog; cascade-delete all user data
+<!-- Add goals here -->
 
 ## References
 
-- Spec: [context/features/profile-spec.md](context/features/profile-spec.md)
+<!-- Add references here -->
 
 ## Notes
 
-- Avatar logic: use `user.image` (GitHub OAuth) if present, otherwise generate initials from `user.name` or `user.email`
-- Change password button should be hidden for users who signed up via GitHub OAuth (those have no `user.password`)
-- Delete confirmation must use shadcn `AlertDialog` (matches existing pattern from note card delete)
-- Follow existing DB helper pattern: create `src/lib/db/users.ts` with profile/stats queries
-- Use `requireUser()` from `src/lib/auth-utils.ts` to get session
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 
@@ -66,4 +57,5 @@ In Progress
 - **2026-06-12** — Added note card actions menu. `AppNoteCard` converted to a client component with a `MoreHorizontal` triple-dot button inline with the title. Clicking opens a shadcn `DropdownMenu` with a Delete option. Delete triggers a shadcn `AlertDialog` confirmation modal (full-width description, stacked buttons, title truncated at 20 chars). Confirmed deletion calls `DELETE /api/dashboard/note/[id]` (ownership-enforced via `requireUserId`), then `router.refresh()`. Success/failure feedback via sonner toasts. Added `src/components/ui/alert-dialog.tsx`.
 - **2026-06-25** — Built Note Drawer with WYSIWYG Tiptap editor. `NoteDrawer` client component renders below the workbench tab bar: read mode shows rendered markdown (`prose` + `@tailwindcss/typography`); edit mode is live WYSIWYG via `StarterKit` + `tiptap-markdown`. Header row shows title input, Edit/Read toggle, and Save/Add submit button (with `Save`/`Plus` lucide icons). Meta row shows collection `Select` (required) and tags multi-select (`Popover` + `Command`) in edit mode; in read mode shows collection name with `Folder` icon and tag `Badge`s. Added `POST /api/dashboard/note` (create), `GET+PUT /api/dashboard/note/[id]` (fetch/update), `GET /api/dashboard/collection`, `GET /api/dashboard/tag`. Dashboard layout updated to propagate `h-screen` height so workbench fills the viewport. Workbench container styled as a bordered `rounded-xl` panel with the drawer content separated from the tab bar. Light-mode code block colors overridden in `globals.css`.
 - **2026-06-26** — Completed Note Drawer tab controls, timestamps, and auto-save. Wired `+` button to immediately POST a blank note to DB and open it as a tab (auto-create pattern — no hidden plus state). Implemented `handleCloseTab` (removes tab from URL, shifts focus to last remaining tab) and `handleSwitchTab` (navigates between tabs). Added `editModeNoteIds` ref to preserve edit/read mode state across tab switches. NoteDrawer simplified to always require a real `noteId`. Added `createdAt`/`updatedAt` timestamps row in drawer header (read-only). Implemented 1-second debounced auto-save on all edits (title, content, collection, tags) with "Saving… / Saved" indicator; if no collection is selected, server finds or creates a "Draft" collection automatically. Added `startInEditMode` and `onEditModeChange` props so workbench can control and track per-tab edit mode.
-- **2026-06-26** — Added sidebar hover menu for collections and tags. `SidebarHoverMenuItem` client component replaces static sidebar rows — hovering reveals a `position: fixed` popup to the right of the sidebar with note titles (opacity + max-height CSS transition, 192px fixed width, viewport-bottom guard). Notes fetched lazily on first hover via new `GET /api/dashboard/collection/[id]/notes` and `GET /api/dashboard/tag/[id]/notes` endpoints, cached in a ref. Clicking a note opens it in the workbench; if already on workbench, merges into existing tabs via `window.location.search`. Workbench tab bar updated to `gap-2 bg-transparent` for visible spacing between tabs.
+- **2026-06-26** — Added sidebar hover menu for collections and tags.
+- **2026-06-29** — Built profile page. Created `/dashboard/profile` (protected server component) showing avatar (GitHub image or initials), editable display name (`EditableName` client component with instant local update + `router.refresh()` for sidebar sync), email, and member-since date. Usage stats card shows totals for notes, collections, tags, and combined favorites via `getUserStats` in `src/lib/db/users.ts`. Account card shows Change Password form (email users only, `react-hook-form` + Zod, `POST /api/dashboard/user/change-password` with bcrypt verify + rehash) and Delete Account button (shadcn `AlertDialog`, `DELETE /api/dashboard/user` cascade-deletes all data, then `signOut`). `AppSidebar` updated to fetch user name from DB directly (bypassing stale JWT) so the sidebar name updates immediately after a name edit. Sidebar "Account" dropdown now links to `/dashboard/profile`. `SidebarHoverMenuItem` client component replaces static sidebar rows — hovering reveals a `position: fixed` popup to the right of the sidebar with note titles (opacity + max-height CSS transition, 192px fixed width, viewport-bottom guard). Notes fetched lazily on first hover via new `GET /api/dashboard/collection/[id]/notes` and `GET /api/dashboard/tag/[id]/notes` endpoints, cached in a ref. Clicking a note opens it in the workbench; if already on workbench, merges into existing tabs via `window.location.search`. Workbench tab bar updated to `gap-2 bg-transparent` for visible spacing between tabs.
