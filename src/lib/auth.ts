@@ -4,6 +4,7 @@ import GitHubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { loginLimiter } from "@/lib/rate-limit";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -14,10 +15,30 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials.password) {
           throw new Error("Email and password are required");
         }
+
+        const xff = (req?.headers as Record<string, string> | undefined)?.[
+          "x-forwarded-for"
+        ];
+        const ip = xff ? xff.split(",")[0].trim() : "127.0.0.1";
+        const identifier = `${ip}:${credentials.email}`;
+        try {
+          const { success, reset } = await loginLimiter.limit(identifier);
+          if (!success) {
+            const retryAfterSecs = Math.ceil((reset - Date.now()) / 1000);
+            const minutes = Math.max(1, Math.ceil(retryAfterSecs / 60));
+            throw new Error(
+              `Too many login attempts. Please try again in ${minutes} minute${minutes !== 1 ? "s" : ""}.`,
+            );
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.startsWith("Too many")) throw e;
+          // Fail open — allow request if Upstash is unavailable
+        }
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });

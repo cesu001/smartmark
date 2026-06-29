@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { applyRateLimit, getIP, registerLimiter } from "@/lib/rate-limit";
 
 // Server-side schema — mirrors the frontend Zod schema but enforced at the API boundary.
 const registerSchema = z.object({
@@ -11,6 +12,9 @@ const registerSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const limited = await applyRateLimit(registerLimiter, getIP(request));
+    if (limited) return limited;
+
     const parsed = registerSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
