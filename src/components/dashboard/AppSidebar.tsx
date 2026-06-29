@@ -59,11 +59,10 @@ const quickAccessItems = [
 const AppSidebar = async () => {
   const {
     id: userId,
-    name: userName,
     email: userEmail,
     image: userImage,
   } = await requireUser();
-  const [allCount, favCount, pinnedCount, collections, tags] =
+  const [allCount, favCount, pinnedCount, collections, tags, dbUser] =
     await Promise.all([
       prisma.note.count({ where: { userId } }),
       prisma.note.count({ where: { userId, isFavorite: true } }),
@@ -93,8 +92,13 @@ const AppSidebar = async () => {
         },
         orderBy: { name: "asc" },
       }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      }),
     ]);
 
+  const userName = dbUser?.name;
   const counts: Record<string, number> = {
     all: allCount,
     favorite: favCount,
@@ -222,9 +226,11 @@ const AppSidebar = async () => {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <CircleUser />
-                  <span>Account</span>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">
+                    <CircleUser />
+                    <span>Account</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Settings />

@@ -1,19 +1,28 @@
-# Current Feature
+# Current Feature: Profile Page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Create profile page at `/dashboard/profile` route (protected, requires auth)
+- Display user info: name, email, avatar (GitHub image or initials fallback), account creation date
+- Show usage stats: total notes, total collections, total tags, total favorite items
+- Add "Change Password" action — visible only for email/password users (not GitHub OAuth)
+- Add "Delete Account" action with confirmation dialog; cascade-delete all user data
 
 ## References
 
-<!-- Add references here -->
+- Spec: [context/features/profile-spec.md](context/features/profile-spec.md)
 
 ## Notes
 
+- Avatar logic: use `user.image` (GitHub OAuth) if present, otherwise generate initials from `user.name` or `user.email`
+- Change password button should be hidden for users who signed up via GitHub OAuth (those have no `user.password`)
+- Delete confirmation must use shadcn `AlertDialog` (matches existing pattern from note card delete)
+- Follow existing DB helper pattern: create `src/lib/db/users.ts` with profile/stats queries
+- Use `requireUser()` from `src/lib/auth-utils.ts` to get session
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 
