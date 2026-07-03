@@ -1,20 +1,16 @@
-# Current Feature: Vitest Unit Testing Setup
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add Vitest as the unit test runner
-- Scope: only test server actions (`src/actions/**`) and utilities (`src/lib/**`) — no component tests
-- Provide a couple of real example tests against existing utilities to prove the setup works
-- Update `context/ai-interaction.md` and `context/coding-standards.md` to reflect that unit testing is now available (workflow previously said "Implement unit testing later")
+<!-- Add goals here -->
 
 ## References
 
-- context/coding-standards.md (Testing conventions to add)
-- context/ai-interaction.md (Workflow step 4 to update)
+<!-- Add references here -->
 
 ## Notes
 
@@ -76,3 +72,4 @@ In Progress
 - **2026-06-26** — Added sidebar hover menu for collections and tags.
 - **2026-06-29** — Added auth rate limiting. Installed `@upstash/ratelimit` and `@upstash/redis`. Created `src/lib/rate-limit.ts` with four sliding-window `Ratelimit` instances (login: 5/15m by IP+email; register and forgot-password: 3/1h by IP; reset-password: 5/15m by IP), a `getIP()` extractor, and an `applyRateLimit()` helper that returns a 429 `NextResponse` with `Retry-After` header on breach or `null` to allow, failing open on Redis errors. Added the check as the first line of `POST /api/auth/register`, `POST /api/auth/forgot-password`, and `POST /api/auth/reset-password`. Login rate limiting wired inside the NextAuth `CredentialsProvider.authorize` callback (throws on breach; NextAuth surfaces as `result.error` in the frontend). No frontend changes required — all forms already handle non-OK responses with sonner toasts.
 - **2026-06-29** — Built profile page. Created `/dashboard/profile` (protected server component) showing avatar (GitHub image or initials), editable display name (`EditableName` client component with instant local update + `router.refresh()` for sidebar sync), email, and member-since date. Usage stats card shows totals for notes, collections, tags, and combined favorites via `getUserStats` in `src/lib/db/users.ts`. Account card shows Change Password form (email users only, `react-hook-form` + Zod, `POST /api/dashboard/user/change-password` with bcrypt verify + rehash) and Delete Account button (shadcn `AlertDialog`, `DELETE /api/dashboard/user` cascade-deletes all data, then `signOut`). `AppSidebar` updated to fetch user name from DB directly (bypassing stale JWT) so the sidebar name updates immediately after a name edit. Sidebar "Account" dropdown now links to `/dashboard/profile`. `SidebarHoverMenuItem` client component replaces static sidebar rows — hovering reveals a `position: fixed` popup to the right of the sidebar with note titles (opacity + max-height CSS transition, 192px fixed width, viewport-bottom guard). Notes fetched lazily on first hover via new `GET /api/dashboard/collection/[id]/notes` and `GET /api/dashboard/tag/[id]/notes` endpoints, cached in a ref. Clicking a note opens it in the workbench; if already on workbench, merges into existing tabs via `window.location.search`. Workbench tab bar updated to `gap-2 bg-transparent` for visible spacing between tabs.
+- **2026-07-03** — Added Vitest for unit testing. Installed `vitest`, added `npm run test`/`test:watch` scripts, and created `vitest.config.ts` (node environment, `@/` alias, loads `.env` via `dotenv/config`) scoped to `src/actions/**/*.test.ts` and `src/lib/**/*.test.ts` only — no component tests. Added example tests `src/lib/utils.test.ts` (`cn`) and `src/lib/rate-limit.test.ts` (`getIP`, `applyRateLimit` with a mocked `Ratelimit` client). Updated `context/ai-interaction.md` workflow step 4 to run `npm run test` instead of deferring unit testing, and added a Testing section to `context/coding-standards.md` documenting scope and conventions.
