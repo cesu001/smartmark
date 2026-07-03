@@ -1,22 +1,37 @@
-# Current Feature
+# Current Feature: Vitest Unit Testing Setup
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add Vitest as the unit test runner
+- Scope: only test server actions (`src/actions/**`) and utilities (`src/lib/**`) — no component tests
+- Provide a couple of real example tests against existing utilities to prove the setup works
+- Update `context/ai-interaction.md` and `context/coding-standards.md` to reflect that unit testing is now available (workflow previously said "Implement unit testing later")
 
 ## References
 
-<!-- Add references here -->
+- context/coding-standards.md (Testing conventions to add)
+- context/ai-interaction.md (Workflow step 4 to update)
 
 ## Notes
 
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 - **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
+- **TODO by code scanner (high, security/IDOR):** `src/app/api/dashboard/note/route.ts` (POST) and `src/app/api/dashboard/note/[id]/route.ts` (PUT) accept `collectionId`/`tagIds` from the client without verifying they belong to the authenticated user, and `getCollectionWithNotes`/`getTagWithNotes` (`src/lib/db/collections.ts`, `src/lib/db/tags.ts`) don't re-filter the `notes` sub-relation by the note's own `userId` — a user can cross-inject their note into another user's collection/tag view. Fix: verify `collectionId`/`tagIds` ownership before create/update, and add `note: { userId }` filters to the sub-relation selects as defense-in-depth.
+- **TODO by code scanner (medium):** `src/app/api/dashboard/user/route.ts` (PATCH/DELETE) and `src/app/api/dashboard/user/change-password/route.ts` call `requireUser()`/`requireUserId()` inside a `try/catch`, which swallows the `NEXT_REDIRECT` throw and returns a false 500 instead of redirecting. Fix: call the auth check before the `try` block (matching the note/collection/tag routes), or detect and rethrow redirect errors.
+- **TODO by code scanner (medium, performance):** `AppSidebar.tsx`, `AppStatList.tsx`, and `dashboard/page.tsx` issue 10+ redundant/overlapping Prisma queries per `/dashboard` navigation (no request-level caching/dedup). Fix: wrap shared count/list queries in a request-scoped `React.cache()` helper or lift them into a single shared fetch.
+- **TODO by code scanner (low):** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
+- **TODO by code scanner (low):** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
+- **TODO by code scanner (low):** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
+- **TODO by code scanner (low):** `src/components/dashboard/ＭodeToggle.tsx` uses a fullwidth Unicode "Ｍ" in the filename instead of ASCII "M" — rename to `ModeToggle.tsx` and update the import in `AppNavbar.tsx`.
+- **TODO by code scanner (low):** `workbench/page.tsx` tab serialization (`${id}_${encodeURIComponent(title)}` split on `_`) truncates note titles containing underscores when parsing back out. Fix: use a delimiter unaffected by `encodeURIComponent`, or parse with `indexOf`/`slice` instead of `split` destructuring.
+- **TODO by code scanner (low, refactor):** `SidebarAddCollection.tsx` and `SidebarAddTag.tsx` are ~95% duplicated — extract a shared `SidebarInlineAddForm` component or `useInlineCreate` hook.
+- **TODO by code scanner (low, refactor):** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
+- **TODO by code scanner (low, performance):** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
 
 ## History
 

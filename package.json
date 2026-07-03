@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test:db": "npx tsx scripts/test-db-connection.ts",
-    "test:seed": "npx tsx scripts/test-db-seedFetch.ts"
+    "test:seed": "npx tsx scripts/test-db-seedFetch.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -58,6 +60,7 @@
     "prisma": "^7.5.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }

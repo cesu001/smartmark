@@ -90,6 +90,15 @@ Example v4 configuration:
 - Return `{ success, data, error }` pattern from actions
 - Display user-friendly error messages via toast
 
+## Testing
+
+- Vitest is the unit test runner (`npm run test` / `npm run test:watch`), config in `vitest.config.ts`
+- Unit tests only cover `src/actions/**` (Server Actions) and `src/lib/**` (utilities) — no component tests
+- Colocate tests next to the file they cover: `foo.ts` → `foo.test.ts`
+- Import `describe`/`it`/`expect`/`vi` explicitly from `vitest` (no globals)
+- Mock external services (Redis, Prisma, Resend, etc.) at the call site rather than hitting real infra
+- Manual browser verification remains the source of truth for components and full user flows
+
 ## Code Quality
 
 - No commented-out code unless specified
