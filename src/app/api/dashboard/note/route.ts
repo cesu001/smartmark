@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireUserId } from "@/lib/auth-utils";
+import { createNote } from "@/lib/db/notes";
 
 const createNoteSchema = z.object({
   title: z.string().min(1).max(255),
@@ -19,19 +19,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const { title, collectionId, tagIds, content } = parsed.data;
+  const result = await createNote(userId, parsed.data);
+  if (result.status === "invalid_collection") {
+    return NextResponse.json({ error: "Invalid collection" }, { status: 400 });
+  }
+  if (result.status === "invalid_tags") {
+    return NextResponse.json({ error: "Invalid tags" }, { status: 400 });
+  }
 
-  const note = await prisma.note.create({
-    data: {
-      title,
-      content,
-      collectionId,
-      userId,
-      tags: {
-        create: tagIds.map((tagId) => ({ tagId })),
-      },
-    },
-  });
-
-  return NextResponse.json({ id: note.id }, { status: 201 });
+  return NextResponse.json({ id: result.id }, { status: 201 });
 }

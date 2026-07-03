@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth-utils";
-import { prisma } from "@/lib/db";
-import bcrypt from "bcryptjs";
+import { changeUserPassword } from "@/lib/db/users";
 import { z } from "zod";
 
 const schema = z.object({
@@ -10,39 +9,27 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const user = await requireUser();
   try {
-    const user = await requireUser();
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
     const { currentPassword, newPassword } = parsed.data;
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { password: true },
-    });
-
-    if (!dbUser?.password) {
+    const result = await changeUserPassword(user.id, currentPassword, newPassword);
+    if (result === "no_password") {
       return NextResponse.json(
         { error: "No password set for this account" },
         { status: 400 },
       );
     }
-
-    const isValid = await bcrypt.compare(currentPassword, dbUser.password);
-    if (!isValid) {
+    if (result === "invalid") {
       return NextResponse.json(
         { error: "Current password is incorrect" },
         { status: 400 },
       );
     }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
 
     return NextResponse.json({ message: "Password updated successfully" });
   } catch (error) {

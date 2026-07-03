@@ -1,6 +1,6 @@
-import { requireUserId } from "@/lib/auth-utils";
-import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { requireUserId } from "@/lib/auth-utils";
+import { getTagNotesSummary } from "@/lib/db/tags";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -8,21 +8,10 @@ export async function GET(_req: Request, { params }: RouteContext) {
   const userId = await requireUserId();
   const { id } = await params;
 
-  const tag = await prisma.tag.findFirst({
-    where: { id, userId },
-    select: {
-      notes: {
-        select: {
-          note: { select: { id: true, title: true } },
-        },
-        orderBy: { note: { updatedAt: "desc" } },
-      },
-    },
-  });
-
-  if (!tag) {
+  const notes = await getTagNotesSummary(id, userId);
+  if (!notes) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(tag.notes.map((n) => n.note));
+  return NextResponse.json(notes);
 }

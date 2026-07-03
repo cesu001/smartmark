@@ -1,16 +1,19 @@
-# Current Feature
+# Current Feature: Refactor Prisma Queries into DB Utilities
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Extract inline Prisma query logic from `src/app/api/**` route handlers into `src/lib/db/*.ts` utilities (extending the existing `collections.ts`, `notes.ts`, `tags.ts`, `users.ts` pattern already used by server components)
+- Keep route handlers thin: auth check → Zod validation → call db utility → return `{ success, data, error }` response
+- Fold in the fix for the open IDOR TODO as part of this refactor: verify `collectionId`/`tagIds` ownership before note create/update, and add `note: { userId }` filters to the `notes` sub-relation in `getCollectionWithNotes`/`getTagWithNotes`
 
 ## References
 
-<!-- Add references here -->
+- Routes to refactor: `src/app/api/dashboard/note/route.ts`, `src/app/api/dashboard/note/[id]/route.ts`, `src/app/api/dashboard/collection/route.ts`, `src/app/api/dashboard/collection/[id]/notes/route.ts`, `src/app/api/dashboard/tag/route.ts`, `src/app/api/dashboard/tag/[id]/notes/route.ts`, `src/app/api/dashboard/user/route.ts`, `src/app/api/dashboard/user/change-password/route.ts`
+- Existing utilities to extend: `src/lib/db/collections.ts`, `src/lib/db/notes.ts`, `src/lib/db/tags.ts`, `src/lib/db/users.ts`
 
 ## Notes
 

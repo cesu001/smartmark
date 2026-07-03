@@ -12,6 +12,7 @@ export async function getTagWithNotes(
     select: {
       name: true,
       notes: {
+        where: { note: { userId } },
         orderBy: { note: { updatedAt: "desc" } },
         include: {
           note: {
@@ -74,4 +75,53 @@ export async function getAllTags(userId: string): Promise<Tag[]> {
     isFavorite: tag.isFavorite,
     noteCount: tag._count.notes,
   }));
+}
+
+export async function getTagNames(
+  userId: string,
+): Promise<{ id: string; name: string }[]> {
+  return prisma.tag.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export async function createTag(
+  userId: string,
+  name: string,
+): Promise<{ id: string; name: string }> {
+  return prisma.tag.create({
+    data: { name, userId },
+    select: { id: true, name: true },
+  });
+}
+
+export async function verifyTagsOwnership(
+  userId: string,
+  tagIds: string[],
+): Promise<boolean> {
+  if (tagIds.length === 0) return true;
+  const count = await prisma.tag.count({
+    where: { id: { in: tagIds }, userId },
+  });
+  return count === tagIds.length;
+}
+
+export async function getTagNotesSummary(
+  tagId: string,
+  userId: string,
+): Promise<{ id: string; title: string }[] | null> {
+  const tag = await prisma.tag.findFirst({
+    where: { id: tagId, userId },
+    select: {
+      notes: {
+        where: { note: { userId } },
+        select: { note: { select: { id: true, title: true } } },
+        orderBy: { note: { updatedAt: "desc" } },
+      },
+    },
+  });
+  if (!tag) return null;
+  return tag.notes.map((n) => n.note);
 }

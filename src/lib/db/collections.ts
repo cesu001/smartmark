@@ -46,6 +46,7 @@ export async function getCollectionWithNotes(
     select: {
       name: true,
       notes: {
+        where: { userId },
         orderBy: { updatedAt: "desc" },
         include: {
           tags: {
@@ -85,4 +86,58 @@ export async function getFavCollection(userId: string, limit = 2) {
     },
   });
   return collections;
+}
+
+export async function createCollection(
+  userId: string,
+  name: string,
+): Promise<{ id: string; name: string }> {
+  return prisma.collection.create({
+    data: { name, userId },
+    select: { id: true, name: true },
+  });
+}
+
+export async function verifyCollectionOwnership(
+  userId: string,
+  collectionId: string,
+): Promise<boolean> {
+  const collection = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  });
+  return collection !== null;
+}
+
+export async function getOrCreateDraftCollection(
+  userId: string,
+): Promise<string> {
+  const draft = await prisma.collection.findFirst({
+    where: { userId, name: "Draft" },
+    select: { id: true },
+  });
+  if (draft) return draft.id;
+  const created = await prisma.collection.create({
+    data: { name: "Draft", userId },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+export async function getCollectionNotesSummary(
+  collectionId: string,
+  userId: string,
+): Promise<{ id: string; title: string }[] | null> {
+  const collection = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: {
+      notes: {
+        where: { userId },
+        select: { id: true, title: true },
+        orderBy: { updatedAt: "desc" },
+      },
+    },
+  });
+  if (!collection) return null;
+  return collection.notes;
 }

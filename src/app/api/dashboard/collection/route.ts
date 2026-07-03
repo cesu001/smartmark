@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireUserId } from "@/lib/auth-utils";
+import { getAllCollections, createCollection } from "@/lib/db/collections";
 
 export async function GET() {
   const userId = await requireUserId();
-  const collections = await prisma.collection.findMany({
-    where: { userId },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
+  const collections = await getAllCollections(userId);
   return NextResponse.json(collections);
 }
 
@@ -26,10 +22,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const collection = await prisma.collection.create({
-    data: { name: parsed.data.name, userId },
-    select: { id: true, name: true },
-  });
-
+  const collection = await createCollection(userId, parsed.data.name);
   return NextResponse.json(collection, { status: 201 });
 }

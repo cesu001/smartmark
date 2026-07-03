@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
 import { Note } from "@/types/dashboard";
+import {
+  verifyCollectionOwnership,
+  getOrCreateDraftCollection,
+} from "./collections";
+import { verifyTagsOwnership } from "./tags";
 
 const noteTagInclude = {
   tags: {
@@ -92,4 +97,134 @@ export async function getNoteById(
     include: noteTagInclude,
   });
   return note ? mapNote(note) : null;
+}
+
+export interface NoteDetail {
+  id: string;
+  title: string;
+  content: string;
+  collectionId: string | null;
+  isPinned: boolean;
+  isFavorite: boolean;
+  tags: { id: string; name: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getNoteDetail(
+  noteId: string,
+  userId: string,
+): Promise<NoteDetail | null> {
+  const note = await prisma.note.findFirst({
+    where: { id: noteId, userId },
+    include: noteTagInclude,
+  });
+  if (!note) return null;
+  return {
+    id: note.id,
+    title: note.title,
+    content: note.content ?? "",
+    collectionId: note.collectionId,
+    isPinned: note.isPinned,
+    isFavorite: note.isFavorite,
+    tags: note.tags.map((t) => t.tag),
+    createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString(),
+  };
+}
+
+interface NoteInput {
+  title: string;
+  content: string;
+  collectionId?: string | null;
+  tagIds: string[];
+}
+
+export type CreateNoteResult =
+  | { status: "invalid_collection" }
+  | { status: "invalid_tags" }
+  | { status: "ok"; id: string };
+
+export async function createNote(
+  userId: string,
+  data: NoteInput,
+): Promise<CreateNoteResult> {
+  if (data.collectionId && !(await verifyCollectionOwnership(userId, data.collectionId))) {
+    return { status: "invalid_collection" };
+  }
+  if (!(await verifyTagsOwnership(userId, data.tagIds))) {
+    return { status: "invalid_tags" };
+  }
+
+  const note = await prisma.note.create({
+    data: {
+      title: data.title,
+      content: data.content,
+      collectionId: data.collectionId ?? null,
+      userId,
+      tags: { create: data.tagIds.map((tagId) => ({ tagId })) },
+    },
+    select: { id: true },
+  });
+
+  return { status: "ok", id: note.id };
+}
+
+export type UpdateNoteResult =
+  | { status: "not_found" }
+  | { status: "invalid_collection" }
+  | { status: "invalid_tags" }
+  | { status: "ok"; id: string; collectionId: string | null };
+
+export async function updateNote(
+  noteId: string,
+  userId: string,
+  data: NoteInput,
+): Promise<UpdateNoteResult> {
+  const existing = await prisma.note.findFirst({
+    where: { id: noteId, userId },
+    select: { id: true },
+  });
+  if (!existing) return { status: "not_found" };
+
+  let collectionId = data.collectionId ?? null;
+  if (!collectionId) {
+    collectionId = await getOrCreateDraftCollection(userId);
+  } else if (!(await verifyCollectionOwnership(userId, collectionId))) {
+    return { status: "invalid_collection" };
+  }
+
+  if (!(await verifyTagsOwnership(userId, data.tagIds))) {
+    return { status: "invalid_tags" };
+  }
+
+  const note = await prisma.note.update({
+    where: { id: noteId },
+    data: {
+      title: data.title,
+      content: data.content,
+      collectionId,
+      tags: {
+        deleteMany: {},
+        create: data.tagIds.map((tagId) => ({ tagId })),
+      },
+    },
+    select: { id: true, collectionId: true },
+  });
+
+  return { status: "ok", id: note.id, collectionId: note.collectionId };
+}
+
+export async function deleteNote(
+  noteId: string,
+  userId: string,
+): Promise<boolean> {
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    select: { userId: true },
+  });
+  if (!note || note.userId !== userId) return false;
+
+  await prisma.note.delete({ where: { id: noteId } });
+  return true;
 }

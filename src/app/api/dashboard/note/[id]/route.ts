@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireUserId } from "@/lib/auth-utils";
+import { getNoteDetail, updateNote, deleteNote } from "@/lib/db/notes";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -9,28 +9,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const userId = await requireUserId();
   const { id } = await params;
 
-  const note = await prisma.note.findFirst({
-    where: { id, userId },
-    include: {
-      tags: { include: { tag: { select: { id: true, name: true } } } },
-    },
-  });
-
+  const note = await getNoteDetail(id, userId);
   if (!note) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    id: note.id,
-    title: note.title,
-    content: note.content ?? "",
-    collectionId: note.collectionId,
-    isPinned: note.isPinned,
-    isFavorite: note.isFavorite,
-    tags: note.tags.map((t) => t.tag),
-    createdAt: note.createdAt.toISOString(),
-    updatedAt: note.updatedAt.toISOString(),
-  });
+  return NextResponse.json(note);
 }
 
 const updateNoteSchema = z.object({
@@ -44,61 +28,34 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const userId = await requireUserId();
   const { id } = await params;
 
-  const existing = await prisma.note.findFirst({
-    where: { id, userId },
-    select: { id: true },
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   const body = await request.json();
   const parsed = updateNoteSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const { title, tagIds, content } = parsed.data;
-  let { collectionId } = parsed.data;
-
-  if (!collectionId) {
-    let draft = await prisma.collection.findFirst({ where: { userId, name: "Draft" } });
-    if (!draft) {
-      draft = await prisma.collection.create({ data: { name: "Draft", userId } });
-    }
-    collectionId = draft.id;
+  const result = await updateNote(id, userId, parsed.data);
+  if (result.status === "not_found") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (result.status === "invalid_collection") {
+    return NextResponse.json({ error: "Invalid collection" }, { status: 400 });
+  }
+  if (result.status === "invalid_tags") {
+    return NextResponse.json({ error: "Invalid tags" }, { status: 400 });
   }
 
-  const note = await prisma.note.update({
-    where: { id },
-    data: {
-      title,
-      content,
-      collectionId,
-      tags: {
-        deleteMany: {},
-        create: tagIds.map((tagId) => ({ tagId })),
-      },
-    },
-  });
-
-  return NextResponse.json({ id: note.id, collectionId: note.collectionId });
+  return NextResponse.json({ id: result.id, collectionId: result.collectionId });
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
   const userId = await requireUserId();
   const { id } = await params;
 
-  const note = await prisma.note.findUnique({
-    where: { id },
-    select: { userId: true },
-  });
-
-  if (!note || note.userId !== userId) {
+  const deleted = await deleteNote(id, userId);
+  if (!deleted) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-
-  await prisma.note.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });
 }

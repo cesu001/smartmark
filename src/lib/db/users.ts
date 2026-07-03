@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function getUserProfile(userId: string) {
   return prisma.user.findUnique({
@@ -30,4 +31,36 @@ export async function getUserStats(userId: string) {
     tags,
     favorites: favNotes + favCollections + favTags,
   };
+}
+
+export async function updateUserName(userId: string, name: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { name } });
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  await prisma.user.delete({ where: { id: userId } });
+}
+
+export type ChangePasswordResult = "no_password" | "invalid" | "ok";
+
+export async function changeUserPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { password: true },
+  });
+  if (!user?.password) return "no_password";
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) return "invalid";
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword },
+  });
+  return "ok";
 }
