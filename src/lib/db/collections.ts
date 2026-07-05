@@ -138,6 +138,41 @@ export async function getOrCreateDraftCollection(
   return created.id;
 }
 
+export async function updateCollectionName(
+  collectionId: string,
+  userId: string,
+  name: string,
+): Promise<{ id: string; name: string } | null> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  return prisma.collection.update({
+    where: { id: collectionId },
+    data: { name },
+    select: { id: true, name: true },
+  });
+}
+
+export async function deleteCollectionAndNotes(
+  collectionId: string,
+  userId: string,
+): Promise<boolean> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+
+  await prisma.$transaction([
+    prisma.note.deleteMany({ where: { collectionId, userId } }),
+    prisma.collection.delete({ where: { id: collectionId } }),
+  ]);
+  return true;
+}
+
 export async function getCollectionNotesSummary(
   collectionId: string,
   userId: string,

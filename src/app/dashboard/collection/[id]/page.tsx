@@ -1,4 +1,5 @@
 import AppNoteCard from "@/components/dashboard/AppNoteCard";
+import EntityActionsMenu from "@/components/dashboard/EntityActionsMenu";
 import { requireUserId } from "@/lib/auth-utils";
 import { getCollectionWithNotes } from "@/lib/db/collections";
 import { Folder, Plus } from "lucide-react";
@@ -22,6 +23,13 @@ export default async function Page({
         <span className="text-sm text-muted-foreground">
           ({collection.notes.length})
         </span>
+        <EntityActionsMenu
+          id={id}
+          name={collection.name}
+          type="collection"
+          noteCount={collection.notes.length}
+          redirectTo="/dashboard/allnotes"
+        />
       </div>
       <div className="w-full grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto">
         <div className="flex flex-col items-center justify-center min-h-48 h-full py-8 border border-dashed border-muted-foreground/20 rounded-xl bg-background/30 group hover:border-muted-foreground/40 transition-colors cursor-pointer">

@@ -109,6 +109,35 @@ export async function verifyTagsOwnership(
   return count === tagIds.length;
 }
 
+export async function updateTagName(
+  tagId: string,
+  userId: string,
+  name: string,
+): Promise<{ id: string; name: string } | null> {
+  const existing = await prisma.tag.findFirst({
+    where: { id: tagId, userId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  return prisma.tag.update({
+    where: { id: tagId },
+    data: { name },
+    select: { id: true, name: true },
+  });
+}
+
+export async function deleteTag(tagId: string, userId: string): Promise<boolean> {
+  const existing = await prisma.tag.findFirst({
+    where: { id: tagId, userId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+
+  await prisma.tag.delete({ where: { id: tagId } });
+  return true;
+}
+
 export async function getTagNotesSummary(
   tagId: string,
   userId: string,

@@ -1,18 +1,46 @@
-# Current Feature
+# Current Feature: Collection & Tag Actions Menu (Edit/Delete)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+### Collection page (`src/app/dashboard/collection/[id]/page.tsx`)
+
+- Add a triple-dot (`MoreHorizontal`) icon button to the right side of the collection title.
+- Clicking the icon opens a dropdown with "Edit" and "Delete" options (mirror `AppNoteCard.tsx`'s `DropdownMenu` pattern).
+- "Edit" lets the user rename the collection inline (or via a small dialog/input) and persists via a new `PUT /api/dashboard/collection/[id]` route.
+- "Delete" opens a shadcn `AlertDialog` warning modal (mirror `AppNoteCard.tsx`'s delete confirmation styling/copy) before deleting.
+- Confirmed delete calls a new `DELETE /api/dashboard/collection/[id]` route, which deletes the collection **and all notes belonging to it** (not just unlinking/orphaning them), then redirects away since the collection page no longer exists.
+- Add Prisma utilities in `src/lib/db/collections.ts`: `updateCollectionName(collectionId, userId, name)` and `deleteCollectionAndNotes(collectionId, userId)`.
+
+### Tag page (`src/app/dashboard/tag/[id]/page.tsx`)
+
+- Same triple-dot icon + dropdown (Edit/Delete) to the right of the tag title, same component pattern as the collection page (ideally share one small dropdown component between the two pages since the UI is identical).
+- "Edit" renames the tag via a new `PUT /api/dashboard/tag/[id]` route.
+- "Delete" opens the same style of `AlertDialog` warning modal, then calls a new `DELETE /api/dashboard/tag/[id]` route.
+- **Tag delete only deletes the `Tag` record itself — notes are NOT deleted.** `NoteTag` join rows cascade automatically via the existing schema (`onDelete: Cascade` on `NoteTag.tag`), so notes simply lose that tag and remain intact (they may still have other tags or belong to a collection). This intentionally differs from collection delete.
+- Add Prisma utilities in `src/lib/db/tags.ts`: `updateTagName(tagId, userId, name)` and `deleteTag(tagId, userId)`.
+
+### Shared
+
+- Ownership must be enforced (`userId` check) on all four new routes, consistent with existing `verifyCollectionOwnership`/`verifyTagsOwnership` patterns.
+- Need Zod validation for rename payloads (name required, trimmed, max length consistent with existing `createCollection`/`createTag` validation).
+- Add unit tests (Vitest) for the four new `collections.ts`/`tags.ts` functions per project testing conventions.
 
 ## References
 
-<!-- Add references here -->
+- Existing pattern to mirror: `src/components/dashboard/AppNoteCard.tsx` (triple-dot `DropdownMenu` + `AlertDialog` delete confirmation), `DELETE /api/dashboard/note/[id]/route.ts`.
+- Pages to modify: `src/app/dashboard/collection/[id]/page.tsx` and `src/app/dashboard/tag/[id]/page.tsx` (both have an identical title row: icon + `h1` + note count — good candidate to extract a shared header/menu component).
+- DB utilities: `src/lib/db/collections.ts` (has `verifyCollectionOwnership`, `createCollection`, `getCollectionWithNotes`), `src/lib/db/tags.ts` (has `verifyTagsOwnership`, `createTag`, `getTagWithNotes`).
+- API routes: `src/app/api/dashboard/collection/route.ts` and `src/app/api/dashboard/tag/route.ts` (existing GET/POST) — neither has a `[id]/route.ts` yet; needs to be created for both, for PUT/DELETE.
 
 ## Notes
+
+- `Note.collectionId` is optional with `onDelete: SetNull` in `prisma/schema.prisma`, so the DB will NOT cascade-delete notes automatically when a collection is deleted. This feature explicitly overrides that at the application level: delete notes where `collectionId = id` first (in a Prisma transaction), then delete the collection.
+- Tag delete relies on the schema's existing `onDelete: Cascade` on `NoteTag.tag` — no manual note cleanup needed, just delete the `Tag` row.
+- User confirmed (2026-07-05): tag delete should NOT cascade-delete notes, only the collection delete does.
 
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
@@ -25,6 +53,7 @@ Not Started
 - **TODO by code scanner (low, refactor):** `SidebarAddCollection.tsx` and `SidebarAddTag.tsx` are ~95% duplicated — extract a shared `SidebarInlineAddForm` component or `useInlineCreate` hook.
 - **TODO by code scanner (low, refactor):** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
 - **TODO by code scanner (low, performance):** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
+- **TODO (low, cleanup):** `src/components/dashboard/EntityActionsMenu.tsx` — `const label = type === "collection" ? "collection" : "tag"` is redundant since `label` always equals `type`; simplify to use `type` directly.
 
 ## History
 

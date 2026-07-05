@@ -6,7 +6,13 @@ vi.mock("@/lib/db", () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
+    note: {
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -15,6 +21,8 @@ import {
   verifyCollectionOwnership,
   getOrCreateDraftCollection,
   getCollectionStats,
+  updateCollectionName,
+  deleteCollectionAndNotes,
 } from "@/lib/db/collections";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
@@ -67,5 +75,46 @@ describe("getCollectionStats", () => {
   it("returns zeros when the user has no collections", async () => {
     mockedPrisma.collection.findMany.mockResolvedValue([]);
     expect(await getCollectionStats("user-1")).toEqual({ total: 0, favorites: 0 });
+  });
+});
+
+describe("updateCollectionName", () => {
+  it("returns null when the collection doesn't belong to the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null);
+    expect(await updateCollectionName("col-1", "user-1", "New Name")).toBeNull();
+    expect(mockedPrisma.collection.update).not.toHaveBeenCalled();
+  });
+
+  it("renames the collection when owned by the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ id: "col-1" } as never);
+    mockedPrisma.collection.update.mockResolvedValue({
+      id: "col-1",
+      name: "New Name",
+    } as never);
+    expect(await updateCollectionName("col-1", "user-1", "New Name")).toEqual({
+      id: "col-1",
+      name: "New Name",
+    });
+  });
+});
+
+describe("deleteCollectionAndNotes", () => {
+  it("returns false when the collection doesn't belong to the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null);
+    expect(await deleteCollectionAndNotes("col-1", "user-1")).toBe(false);
+    expect(mockedPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("deletes the collection's notes and the collection in a transaction", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ id: "col-1" } as never);
+    mockedPrisma.$transaction.mockResolvedValue([] as never);
+    expect(await deleteCollectionAndNotes("col-1", "user-1")).toBe(true);
+    expect(mockedPrisma.note.deleteMany).toHaveBeenCalledWith({
+      where: { collectionId: "col-1", userId: "user-1" },
+    });
+    expect(mockedPrisma.collection.delete).toHaveBeenCalledWith({
+      where: { id: "col-1" },
+    });
+    expect(mockedPrisma.$transaction).toHaveBeenCalled();
   });
 });
