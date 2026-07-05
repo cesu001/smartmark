@@ -1,4 +1,5 @@
 // @/lib/db/tags.ts
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { Tag } from "@/types/dashboard"; // 記得引入介面
 import type { Note } from "@/types/dashboard";
@@ -56,7 +57,7 @@ export async function getFavoriteTags(userId: string): Promise<Tag[]> {
   }));
 }
 
-export async function getAllTags(userId: string): Promise<Tag[]> {
+export const getAllTags = cache(async (userId: string): Promise<Tag[]> => {
   const tags = await prisma.tag.findMany({
     where: { userId },
     include: {
@@ -75,7 +76,7 @@ export async function getAllTags(userId: string): Promise<Tag[]> {
     isFavorite: tag.isFavorite,
     noteCount: tag._count.notes,
   }));
-}
+});
 
 export async function getTagNames(
   userId: string,

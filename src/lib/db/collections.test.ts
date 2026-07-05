@@ -4,13 +4,18 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     collection: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
     },
   },
 }));
 
 import { prisma } from "@/lib/db";
-import { verifyCollectionOwnership, getOrCreateDraftCollection } from "@/lib/db/collections";
+import {
+  verifyCollectionOwnership,
+  getOrCreateDraftCollection,
+  getCollectionStats,
+} from "@/lib/db/collections";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
 
@@ -45,5 +50,22 @@ describe("getOrCreateDraftCollection", () => {
       data: { name: "Draft", userId: "user-1" },
       select: { id: true },
     });
+  });
+});
+
+describe("getCollectionStats", () => {
+  it("derives total and favorites from the collection list", async () => {
+    mockedPrisma.collection.findMany.mockResolvedValue([
+      { id: "c1", name: "A", isFavorite: true, _count: { notes: 2 } },
+      { id: "c2", name: "B", isFavorite: false, _count: { notes: 0 } },
+      { id: "c3", name: "C", isFavorite: true, _count: { notes: 1 } },
+    ] as never);
+
+    expect(await getCollectionStats("user-1")).toEqual({ total: 3, favorites: 2 });
+  });
+
+  it("returns zeros when the user has no collections", async () => {
+    mockedPrisma.collection.findMany.mockResolvedValue([]);
+    expect(await getCollectionStats("user-1")).toEqual({ total: 0, favorites: 0 });
   });
 });

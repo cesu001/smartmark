@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { Note } from "@/types/dashboard";
 import {
@@ -36,11 +37,17 @@ function mapNote(n: {
   };
 }
 
-export async function getNoteStats(userId: string) {
-  const [total, favorites] = await Promise.all([
+export const getNoteCounts = cache(async (userId: string) => {
+  const [total, favorites, pinned] = await Promise.all([
     prisma.note.count({ where: { userId } }),
     prisma.note.count({ where: { userId, isFavorite: true } }),
+    prisma.note.count({ where: { userId, isPinned: true } }),
   ]);
+  return { total, favorites, pinned };
+});
+
+export async function getNoteStats(userId: string) {
+  const { total, favorites } = await getNoteCounts(userId);
   return { total, favorites };
 }
 

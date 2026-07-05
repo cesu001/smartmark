@@ -1,16 +1,21 @@
-# Current Feature
+# Current Feature: Dedup Redundant Dashboard Prisma Queries
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Eliminate the redundant/duplicate Prisma queries fired on every `/dashboard` navigation (per the code-scanner TODO: `AppSidebar.tsx`, `AppStatList.tsx`, `dashboard/page.tsx` issue 10+ overlapping queries)
+- Wrap the shared count/list fetchers (`getNoteStats`'s counts, `getAllTags`, collection stats) in a request-scoped `React.cache()` so identical calls within one render are deduped instead of re-querying Postgres
+- Keep leaf components that fetch genuinely distinct shapes (`AppRecentNotes`, `AppPinnedNotes`, `AppFavCollections`, `AppRecentCollections`) untouched — out of scope for this pass
 
 ## References
 
-<!-- Add references here -->
+- `src/lib/db/notes.ts` — added `getNoteCounts` (cached), `getNoteStats` now delegates to it
+- `src/lib/db/collections.ts` — added `getAllCollectionsWithCounts` (cached), `getCollectionStats` now derives from it instead of running its own `count()` queries
+- `src/lib/db/tags.ts` — wrapped existing `getAllTags` in `React.cache()`
+- `src/components/dashboard/AppSidebar.tsx` — now calls the cached utilities instead of inline `prisma` calls for note counts, collection list, and tag list
 
 ## Notes
 

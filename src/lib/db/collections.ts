@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import type { Note } from "@/types/dashboard";
 
@@ -11,14 +12,27 @@ export async function getAllCollections(
   });
 }
 
+export const getAllCollectionsWithCounts = cache(async (userId: string) => {
+  return prisma.collection.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      isFavorite: true,
+      _count: { select: { notes: true } },
+    },
+  });
+});
+
 export async function getCollectionStats(
   userId: string,
 ): Promise<{ total: number; favorites: number }> {
-  const [total, favorites] = await Promise.all([
-    prisma.collection.count({ where: { userId } }),
-    prisma.collection.count({ where: { userId, isFavorite: true } }),
-  ]);
-  return { total, favorites };
+  const collections = await getAllCollectionsWithCounts(userId);
+  return {
+    total: collections.length,
+    favorites: collections.filter((c) => c.isFavorite).length,
+  };
 }
 
 export async function getRecentCollection(userId: string, limit = 3) {

@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { getNoteCounts } from "@/lib/db/notes";
+import { getAllCollectionsWithCounts } from "@/lib/db/collections";
+import { getAllTags } from "@/lib/db/tags";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,47 +65,21 @@ const AppSidebar = async () => {
     email: userEmail,
     image: userImage,
   } = await requireUser();
-  const [allCount, favCount, pinnedCount, collections, tags, dbUser] =
-    await Promise.all([
-      prisma.note.count({ where: { userId } }),
-      prisma.note.count({ where: { userId, isFavorite: true } }),
-      prisma.note.count({ where: { userId, isPinned: true } }),
-      prisma.collection.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          name: true,
-          isFavorite: true,
-          _count: {
-            select: { notes: true },
-          },
-        },
-        orderBy: { name: "asc" },
-      }),
-      prisma.tag.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          name: true,
-          _count: {
-            select: {
-              notes: true,
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      }),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      }),
-    ]);
+  const [noteCounts, collections, tags, dbUser] = await Promise.all([
+    getNoteCounts(userId),
+    getAllCollectionsWithCounts(userId),
+    getAllTags(userId),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    }),
+  ]);
 
   const userName = dbUser?.name;
   const counts: Record<string, number> = {
-    all: allCount,
-    favorite: favCount,
-    pinned: pinnedCount,
+    all: noteCounts.total,
+    favorite: noteCounts.favorites,
+    pinned: noteCounts.pinned,
   };
   return (
     <Sidebar>
@@ -191,7 +168,7 @@ const AppSidebar = async () => {
                       type="tag"
                       id={tag.id}
                       name={tag.name}
-                      noteCount={tag._count.notes}
+                      noteCount={tag.noteCount}
                     />
                   ))}
                 </SidebarMenu>
