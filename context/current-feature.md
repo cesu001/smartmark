@@ -1,28 +1,22 @@
-# Current Feature: Dedup Redundant Dashboard Prisma Queries
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Eliminate the redundant/duplicate Prisma queries fired on every `/dashboard` navigation (per the code-scanner TODO: `AppSidebar.tsx`, `AppStatList.tsx`, `dashboard/page.tsx` issue 10+ overlapping queries)
-- Wrap the shared count/list fetchers (`getNoteStats`'s counts, `getAllTags`, collection stats) in a request-scoped `React.cache()` so identical calls within one render are deduped instead of re-querying Postgres
-- Keep leaf components that fetch genuinely distinct shapes (`AppRecentNotes`, `AppPinnedNotes`, `AppFavCollections`, `AppRecentCollections`) untouched — out of scope for this pass
+<!-- Add goals here -->
 
 ## References
 
-- `src/lib/db/notes.ts` — added `getNoteCounts` (cached), `getNoteStats` now delegates to it
-- `src/lib/db/collections.ts` — added `getAllCollectionsWithCounts` (cached), `getCollectionStats` now derives from it instead of running its own `count()` queries
-- `src/lib/db/tags.ts` — wrapped existing `getAllTags` in `React.cache()`
-- `src/components/dashboard/AppSidebar.tsx` — now calls the cached utilities instead of inline `prisma` calls for note counts, collection list, and tag list
+<!-- Add references here -->
 
 ## Notes
 
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 - **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
-- **TODO by code scanner (medium, performance):** `AppSidebar.tsx`, `AppStatList.tsx`, and `dashboard/page.tsx` issue 10+ redundant/overlapping Prisma queries per `/dashboard` navigation (no request-level caching/dedup). Fix: wrap shared count/list queries in a request-scoped `React.cache()` helper or lift them into a single shared fetch.
 - **TODO by code scanner (low):** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
 - **TODO by code scanner (low):** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
 - **TODO by code scanner (low):** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
@@ -77,3 +71,4 @@ In Progress
 - **2026-06-29** — Built profile page. Created `/dashboard/profile` (protected server component) showing avatar (GitHub image or initials), editable display name (`EditableName` client component with instant local update + `router.refresh()` for sidebar sync), email, and member-since date. Usage stats card shows totals for notes, collections, tags, and combined favorites via `getUserStats` in `src/lib/db/users.ts`. Account card shows Change Password form (email users only, `react-hook-form` + Zod, `POST /api/dashboard/user/change-password` with bcrypt verify + rehash) and Delete Account button (shadcn `AlertDialog`, `DELETE /api/dashboard/user` cascade-deletes all data, then `signOut`). `AppSidebar` updated to fetch user name from DB directly (bypassing stale JWT) so the sidebar name updates immediately after a name edit. Sidebar "Account" dropdown now links to `/dashboard/profile`. `SidebarHoverMenuItem` client component replaces static sidebar rows — hovering reveals a `position: fixed` popup to the right of the sidebar with note titles (opacity + max-height CSS transition, 192px fixed width, viewport-bottom guard). Notes fetched lazily on first hover via new `GET /api/dashboard/collection/[id]/notes` and `GET /api/dashboard/tag/[id]/notes` endpoints, cached in a ref. Clicking a note opens it in the workbench; if already on workbench, merges into existing tabs via `window.location.search`. Workbench tab bar updated to `gap-2 bg-transparent` for visible spacing between tabs.
 - **2026-07-03** — Added Vitest for unit testing. Installed `vitest`, added `npm run test`/`test:watch` scripts, and created `vitest.config.ts` (node environment, `@/` alias, loads `.env` via `dotenv/config`) scoped to `src/actions/**/*.test.ts` and `src/lib/**/*.test.ts` only — no component tests. Added example tests `src/lib/utils.test.ts` (`cn`) and `src/lib/rate-limit.test.ts` (`getIP`, `applyRateLimit` with a mocked `Ratelimit` client). Updated `context/ai-interaction.md` workflow step 4 to run `npm run test` instead of deferring unit testing, and added a Testing section to `context/coding-standards.md` documenting scope and conventions.
 - **2026-07-03** — Refactored Prisma queries out of `src/app/api/dashboard/**` route handlers into `src/lib/db/*.ts` utilities, so every route is now auth → Zod validation → db-utility call → response. Added `createCollection`, `verifyCollectionOwnership`, `getOrCreateDraftCollection`, `getCollectionNotesSummary` to `collections.ts`; `createTag`, `getTagNames`, `verifyTagsOwnership`, `getTagNotesSummary` to `tags.ts`; `createNote`, `getNoteDetail`, `updateNote`, `deleteNote` to `notes.ts`; `updateUserName`, `deleteUser`, `changeUserPassword` to `users.ts`. Fixed the open IDOR TODO: `createNote`/`updateNote` now verify `collectionId`/`tagIds` ownership before writing, and `getCollectionWithNotes`/`getTagWithNotes` filter their `notes` sub-relation by `userId` as defense-in-depth. Fixed the try/catch TODO: `requireUserId()`/`requireUser()` now run before the `try` block in `user/route.ts` and `user/change-password/route.ts` so `NEXT_REDIRECT` isn't swallowed. Added 21 Vitest cases across 4 new test files covering the new ownership/branching logic (Prisma and `bcryptjs` mocked at the call site).
+- **2026-07-05** — Fixed the code-scanner performance TODO: deduped redundant Prisma queries fired on every `/dashboard` navigation. Added `getNoteCounts` to `notes.ts` and `getAllCollectionsWithCounts` to `collections.ts`, both wrapped in `React.cache()`; wrapped the existing `getAllTags` in `tags.ts` the same way. `getNoteStats` now delegates to `getNoteCounts`, and `getCollectionStats` derives `total`/`favorites` by filtering the cached collection list instead of running its own `count()` queries. `AppSidebar.tsx` now calls these cached utilities instead of its own inline `prisma` calls, so within one request the sidebar and `dashboard/page.tsx`/`AppStatList` share a single query per fetcher instead of each re-querying Postgres. Verified `React.cache()` is a no-op outside an RSC render (confirmed via a quick Node script), so the new `getCollectionStats` unit tests aren't at risk of cross-test cache pollution. `AppRecentNotes`/`AppPinnedNotes`/`AppFavCollections`/`AppRecentCollections` left untouched — they fetch genuinely distinct shapes.
