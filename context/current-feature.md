@@ -1,46 +1,18 @@
-# Current Feature: Collection & Tag Actions Menu (Edit/Delete)
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-### Collection page (`src/app/dashboard/collection/[id]/page.tsx`)
-
-- Add a triple-dot (`MoreHorizontal`) icon button to the right side of the collection title.
-- Clicking the icon opens a dropdown with "Edit" and "Delete" options (mirror `AppNoteCard.tsx`'s `DropdownMenu` pattern).
-- "Edit" lets the user rename the collection inline (or via a small dialog/input) and persists via a new `PUT /api/dashboard/collection/[id]` route.
-- "Delete" opens a shadcn `AlertDialog` warning modal (mirror `AppNoteCard.tsx`'s delete confirmation styling/copy) before deleting.
-- Confirmed delete calls a new `DELETE /api/dashboard/collection/[id]` route, which deletes the collection **and all notes belonging to it** (not just unlinking/orphaning them), then redirects away since the collection page no longer exists.
-- Add Prisma utilities in `src/lib/db/collections.ts`: `updateCollectionName(collectionId, userId, name)` and `deleteCollectionAndNotes(collectionId, userId)`.
-
-### Tag page (`src/app/dashboard/tag/[id]/page.tsx`)
-
-- Same triple-dot icon + dropdown (Edit/Delete) to the right of the tag title, same component pattern as the collection page (ideally share one small dropdown component between the two pages since the UI is identical).
-- "Edit" renames the tag via a new `PUT /api/dashboard/tag/[id]` route.
-- "Delete" opens the same style of `AlertDialog` warning modal, then calls a new `DELETE /api/dashboard/tag/[id]` route.
-- **Tag delete only deletes the `Tag` record itself — notes are NOT deleted.** `NoteTag` join rows cascade automatically via the existing schema (`onDelete: Cascade` on `NoteTag.tag`), so notes simply lose that tag and remain intact (they may still have other tags or belong to a collection). This intentionally differs from collection delete.
-- Add Prisma utilities in `src/lib/db/tags.ts`: `updateTagName(tagId, userId, name)` and `deleteTag(tagId, userId)`.
-
-### Shared
-
-- Ownership must be enforced (`userId` check) on all four new routes, consistent with existing `verifyCollectionOwnership`/`verifyTagsOwnership` patterns.
-- Need Zod validation for rename payloads (name required, trimmed, max length consistent with existing `createCollection`/`createTag` validation).
-- Add unit tests (Vitest) for the four new `collections.ts`/`tags.ts` functions per project testing conventions.
+<!-- Add goals here -->
 
 ## References
 
-- Existing pattern to mirror: `src/components/dashboard/AppNoteCard.tsx` (triple-dot `DropdownMenu` + `AlertDialog` delete confirmation), `DELETE /api/dashboard/note/[id]/route.ts`.
-- Pages to modify: `src/app/dashboard/collection/[id]/page.tsx` and `src/app/dashboard/tag/[id]/page.tsx` (both have an identical title row: icon + `h1` + note count — good candidate to extract a shared header/menu component).
-- DB utilities: `src/lib/db/collections.ts` (has `verifyCollectionOwnership`, `createCollection`, `getCollectionWithNotes`), `src/lib/db/tags.ts` (has `verifyTagsOwnership`, `createTag`, `getTagWithNotes`).
-- API routes: `src/app/api/dashboard/collection/route.ts` and `src/app/api/dashboard/tag/route.ts` (existing GET/POST) — neither has a `[id]/route.ts` yet; needs to be created for both, for PUT/DELETE.
+<!-- Add references here -->
 
 ## Notes
-
-- `Note.collectionId` is optional with `onDelete: SetNull` in `prisma/schema.prisma`, so the DB will NOT cascade-delete notes automatically when a collection is deleted. This feature explicitly overrides that at the application level: delete notes where `collectionId = id` first (in a Prisma transaction), then delete the collection.
-- Tag delete relies on the schema's existing `onDelete: Cascade` on `NoteTag.tag` — no manual note cleanup needed, just delete the `Tag` row.
-- User confirmed (2026-07-05): tag delete should NOT cascade-delete notes, only the collection delete does.
 
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
@@ -102,3 +74,4 @@ In Progress
 - **2026-07-03** — Refactored Prisma queries out of `src/app/api/dashboard/**` route handlers into `src/lib/db/*.ts` utilities, so every route is now auth → Zod validation → db-utility call → response. Added `createCollection`, `verifyCollectionOwnership`, `getOrCreateDraftCollection`, `getCollectionNotesSummary` to `collections.ts`; `createTag`, `getTagNames`, `verifyTagsOwnership`, `getTagNotesSummary` to `tags.ts`; `createNote`, `getNoteDetail`, `updateNote`, `deleteNote` to `notes.ts`; `updateUserName`, `deleteUser`, `changeUserPassword` to `users.ts`. Fixed the open IDOR TODO: `createNote`/`updateNote` now verify `collectionId`/`tagIds` ownership before writing, and `getCollectionWithNotes`/`getTagWithNotes` filter their `notes` sub-relation by `userId` as defense-in-depth. Fixed the try/catch TODO: `requireUserId()`/`requireUser()` now run before the `try` block in `user/route.ts` and `user/change-password/route.ts` so `NEXT_REDIRECT` isn't swallowed. Added 21 Vitest cases across 4 new test files covering the new ownership/branching logic (Prisma and `bcryptjs` mocked at the call site).
 - **2026-07-05** — Fixed the code-scanner performance TODO: deduped redundant Prisma queries fired on every `/dashboard` navigation. Added `getNoteCounts` to `notes.ts` and `getAllCollectionsWithCounts` to `collections.ts`, both wrapped in `React.cache()`; wrapped the existing `getAllTags` in `tags.ts` the same way. `getNoteStats` now delegates to `getNoteCounts`, and `getCollectionStats` derives `total`/`favorites` by filtering the cached collection list instead of running its own `count()` queries. `AppSidebar.tsx` now calls these cached utilities instead of its own inline `prisma` calls, so within one request the sidebar and `dashboard/page.tsx`/`AppStatList` share a single query per fetcher instead of each re-querying Postgres. Verified `React.cache()` is a no-op outside an RSC render (confirmed via a quick Node script), so the new `getCollectionStats` unit tests aren't at risk of cross-test cache pollution. `AppRecentNotes`/`AppPinnedNotes`/`AppFavCollections`/`AppRecentCollections` left untouched — they fetch genuinely distinct shapes.
 - **2026-07-05** — Fixed light/dark mode color bug on `login`, `register`, `forgot-password`, and `reset-password` pages. All four hardcoded a light-only card (`bg-zinc-50`/`bg-white`/`border-zinc-200`/`text-zinc-900`) while text inherited the global `--color-text-primary`, which flips with the site's theme independently of that fixed background — breaking contrast whenever dark mode was active. Swapped to the shared shadcn tokens (`bg-background`, `bg-card text-card-foreground`, `border-border`, `text-foreground`) so background and text pairing tracks theme changes together, matching the dashboard and the working auth modals. Verified in both themes via Playwright (Firefox), including reset-password's invalid-token and valid-token states.
+- **2026-07-05** — Added Collection & Tag Actions Menu (Edit/Delete). Created shared `EntityActionsMenu` client component (triple-dot `DropdownMenu` with Edit/Delete, a rename `Dialog`, and a delete `AlertDialog`) used by both `src/app/dashboard/collection/[id]/page.tsx` and `src/app/dashboard/tag/[id]/page.tsx`. Added `PUT`/`DELETE /api/dashboard/collection/[id]` and `PUT`/`DELETE /api/dashboard/tag/[id]` routes, all ownership-enforced and Zod-validated. Added `updateCollectionName`/`deleteCollectionAndNotes` to `collections.ts` and `updateTagName`/`deleteTag` to `tags.ts`. Collection delete removes the collection **and all its notes** in a transaction (schema's `onDelete: SetNull` doesn't cascade automatically, so this is done explicitly). Tag delete removes only the `Tag` row — notes keep their content and other tags via the existing `NoteTag` cascade. The collection delete warning dialog highlights the note-loss phrase in red (`text-destructive`) to make the consequence clear. Added 8 Vitest cases (39 total passing) and verified end-to-end in the browser (Playwright/Firefox): rename, collection delete with note cascade, and tag delete with notes surviving.
