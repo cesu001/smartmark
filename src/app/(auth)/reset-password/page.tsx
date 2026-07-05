@@ -22,8 +22,8 @@ export default async function Page({ searchParams }: PageProps) {
     }
   }
   return (
-    <div className="w-full min-h-screen flex justify-center items-center bg-zinc-50 p-4">
-      <div className="w-full max-w-120 bg-white rounded-lg shadow-sm p-4 pb-8 border border-zinc-200">
+    <div className="w-full min-h-screen flex justify-center items-center bg-background p-4">
+      <div className="w-full max-w-120 bg-card text-card-foreground rounded-lg shadow-sm p-4 pb-8 border border-border">
         <div className="flex flex-col items-center gap-2 mb-8">
           <h1 className="text-2xl font-bold mb-3">Reset Password</h1>
           <p className="text-sm text-muted-foreground">
@@ -32,7 +32,7 @@ export default async function Page({ searchParams }: PageProps) {
           {isTokenValid && userEmail ? (
             <p className="text-sm text-muted-foreground text-center">
               Resetting password for{" "}
-              <span className="font-semibold text-zinc-900">{userEmail}</span>
+              <span className="font-semibold text-foreground">{userEmail}</span>
             </p>
           ) : (
             <p className="text-sm text-destructive text-center font-medium">
