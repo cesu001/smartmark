@@ -1,11 +1,11 @@
 import { requireUser } from "@/lib/auth-utils";
 import { getUserProfile, getUserStats } from "@/lib/db/users";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import DeleteAccountButton from "@/components/profile/DeleteAccountButton";
 import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
 import EditableName from "@/components/profile/EditableName";
+import AvatarUploadButton from "@/components/profile/AvatarUploadButton";
 import { CalendarDays, FileText, FolderOpen, Heart, Tag } from "lucide-react";
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -48,10 +48,7 @@ export default async function ProfilePage() {
       <Card>
         <CardContent className="p-8">
           <div className="flex items-center gap-8">
-            <Avatar className="h-20 w-20 text-2xl">
-              <AvatarImage src={profile.image ?? undefined} />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
+            <AvatarUploadButton image={profile.image} initials={initials} />
             <div className="flex flex-col gap-1 min-w-0">
               <EditableName name={profile.name} />
               <p className="text-muted-foreground truncate">{profile.email}</p>

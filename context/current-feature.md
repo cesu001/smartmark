@@ -1,19 +1,24 @@
-# Current Feature
+# Current Feature: Avatar Image Upload (Cloudflare R2)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Create an upload API route that stores images in Cloudflare R2
+- Let the user upload a custom avatar image from the profile page
+- Delete the old R2 file whenever the avatar is replaced or the user is deleted
+- Show an upload progress indicator while the image is uploading
+- Enforce file constraints: max 5 MB, extensions `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`
 
 ## References
 
-<!-- Add references here -->
+- @context/features/images-spec.md
 
 ## Notes
 
+- Db functions for this feature go in `src/lib/db/users.ts` (existing per-entity pattern) — spec's "items.ts" doesn't apply since avatar is a `User` field, not a separate model.
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 - **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.

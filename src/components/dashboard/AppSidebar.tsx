@@ -60,22 +60,19 @@ const quickAccessItems = [
   { title: "Pinned", url: "/dashboard/pinned", icon: Bookmark, key: "pinned" },
 ];
 const AppSidebar = async () => {
-  const {
-    id: userId,
-    email: userEmail,
-    image: userImage,
-  } = await requireUser();
+  const { id: userId, email: userEmail } = await requireUser();
   const [noteCounts, collections, tags, dbUser] = await Promise.all([
     getNoteCounts(userId),
     getAllCollectionsWithCounts(userId),
     getAllTags(userId),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true },
+      select: { name: true, image: true },
     }),
   ]);
 
   const userName = dbUser?.name;
+  const userImage = dbUser?.image;
   const counts: Record<string, number> = {
     all: noteCounts.total,
     favorite: noteCounts.favorites,

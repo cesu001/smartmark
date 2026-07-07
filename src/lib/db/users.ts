@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { deleteFromR2 } from "@/lib/r2";
 
 export async function getUserProfile(userId: string) {
   return prisma.user.findUnique({
@@ -37,7 +38,32 @@ export async function updateUserName(userId: string, name: string): Promise<void
   await prisma.user.update({ where: { id: userId }, data: { name } });
 }
 
+export async function getUserAvatarKey(userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarKey: true },
+  });
+  return user?.avatarKey ?? null;
+}
+
+export async function updateUserAvatar(
+  userId: string,
+  image: string,
+  avatarKey: string,
+): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { image, avatarKey } });
+}
+
 export async function deleteUser(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarKey: true },
+  });
+  if (user?.avatarKey) {
+    await deleteFromR2(user.avatarKey).catch((error) =>
+      console.error("AVATAR_DELETE_ON_ACCOUNT_DELETE_ERROR", error),
+    );
+  }
   await prisma.user.delete({ where: { id: userId } });
 }
 
