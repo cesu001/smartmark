@@ -1,16 +1,20 @@
-# Current Feature
+# Current Feature: Drawer Import Export
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add import and export icon buttons to the note drawer, shown when the user opens a new note
+- Support importing `.md` and `.txt` files only
+- Imported file content is saved directly to the DB as a new note (not uploaded to R2)
+- Support exporting a note as a `.md` file, appending "Powered by Smark" (or similar) text at the end of the exported file
+- Build supporting API route(s) and Prisma-backed utilities for import/export
 
 ## References
 
-<!-- Add references here -->
+- @context/features/drawer-import-export.md
 
 ## Notes
 

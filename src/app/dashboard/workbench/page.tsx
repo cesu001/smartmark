@@ -1,11 +1,12 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, LayoutDashboard, Plus, X } from "lucide-react";
+import { FileText, Import, LayoutDashboard, Plus, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import NoteDrawer from "@/components/dashboard/NoteDrawer";
+import { validateImportFile, deriveTitleFromFilename } from "@/lib/note-import";
 
 interface Tab {
   id: string;
@@ -16,6 +17,8 @@ function WorkbenchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isCreatingNote, setIsCreatingNote] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   // Tracks which note tabs are currently in edit mode so the state survives tab switches
   const editModeNoteIds = useRef<Set<string>>(new Set());
 
@@ -74,6 +77,47 @@ function WorkbenchContent() {
     }
   }
 
+  function handleImportClick() {
+    importInputRef.current?.click();
+  }
+
+  async function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const validation = validateImportFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const content = await file.text();
+      const title = deriveTitleFromFilename(file.name);
+      const res = await fetch("/api/dashboard/note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, collectionId: null, tagIds: [], content }),
+      });
+      if (!res.ok) {
+        toast.error("Failed to import note");
+        return;
+      }
+      const data: { id: string } = await res.json();
+      const newTabs = [...tabs, { id: data.id, title }];
+      router.push(
+        `/dashboard/workbench?open=${data.id}&title=${encodeURIComponent(title)}&tabs=${serializedTabs(newTabs)}`,
+      );
+      toast.success("Note imported");
+    } catch {
+      toast.error("Failed to import note");
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   function handleCloseTab(tabId: string) {
     editModeNoteIds.current.delete(tabId);
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -92,6 +136,16 @@ function WorkbenchContent() {
     }
     const qs = params.toString();
     router.push(`/dashboard/workbench${qs ? "?" + qs : ""}`);
+  }
+
+  function handleTitleSaved(newTitle: string) {
+    if (!activeTabId) return;
+    const currentTab = tabs.find((t) => t.id === activeTabId);
+    if (!currentTab || currentTab.title === newTitle) return;
+    const newTabs = tabs.map((t) => (t.id === activeTabId ? { ...t, title: newTitle } : t));
+    router.replace(
+      `/dashboard/workbench?open=${activeTabId}&title=${encodeURIComponent(newTitle)}&tabs=${serializedTabs(newTabs)}`,
+    );
   }
 
   function handleSwitchTab(tab: Tab) {
@@ -152,6 +206,23 @@ function WorkbenchContent() {
         >
           <Plus className="h-4 w-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleImportClick}
+          disabled={isImporting}
+          className="h-8 px-1.5 text-muted-foreground hover:text-foreground"
+          title="Import note (.md, .txt)"
+        >
+          <Import className="h-5 w-5" />
+        </Button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".md,.txt,text/markdown,text/plain"
+          className="hidden"
+          onChange={handleImportFileChange}
+        />
       </div>
 
       {/* Drawer */}
@@ -164,6 +235,7 @@ function WorkbenchContent() {
               if (isEdit) editModeNoteIds.current.add(activeTabId);
               else editModeNoteIds.current.delete(activeTabId);
             }}
+            onTitleSaved={handleTitleSaved}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

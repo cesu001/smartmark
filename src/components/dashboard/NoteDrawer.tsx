@@ -5,10 +5,12 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { toast } from "sonner";
-import { Check, Eye, Folder, Pencil, Save, Tag } from "lucide-react";
+import { Check, Eye, Folder, Import, Pencil, Save, SquareArrowRightExit, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { validateImportFile, deriveTitleFromFilename } from "@/lib/note-import";
+import { buildExportContent, buildExportFilename } from "@/lib/note-export";
 import {
   Select,
   SelectContent,
@@ -55,6 +57,7 @@ interface NoteDrawerProps {
   noteId: string;
   startInEditMode?: boolean;
   onEditModeChange?: (isEditMode: boolean) => void;
+  onTitleSaved?: (title: string) => void;
 }
 
 type SaveStatus = "idle" | "saving" | "saved";
@@ -67,7 +70,7 @@ function formatDate(iso: string) {
   });
 }
 
-export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }: NoteDrawerProps) {
+export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, onTitleSaved }: NoteDrawerProps) {
   const [isEditMode, setIsEditMode] = useState(startInEditMode ?? false);
   const [title, setTitle] = useState("Untitled Note");
   const [collectionId, setCollectionId] = useState("");
@@ -81,6 +84,7 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const isLoaded = useRef(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Always-current save function — avoids stale closures inside setTimeout
@@ -210,13 +214,14 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }
         setSaveStatus("saved");
         if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
         savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+        onTitleSaved?.(title);
         return true;
       } catch {
         setSaveStatus("idle");
         return false;
       }
     };
-  }, [noteId, title, collectionId, selectedTagIds, editor]);
+  }, [noteId, title, collectionId, selectedTagIds, editor, onTitleSaved]);
 
   async function handleSubmit() {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -229,8 +234,44 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }
     }
   }
 
+  function handleImportClick() {
+    importInputRef.current?.click();
+  }
+
+  async function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const validation = validateImportFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    const content = await file.text();
+    const newTitle = deriveTitleFromFilename(file.name);
+    setTitle(newTitle);
+    editor?.commands.setContent(content);
+    scheduleAutoSaveRef.current();
+    toast.success("File imported");
+  }
+
+  function handleExport() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
+    const blob = new Blob([buildExportContent(content)], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = buildExportFilename(title);
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const collectionName = collections.find((c) => c.id === collectionId)?.name ?? null;
   const selectedTags = tags.filter((t) => selectedTagIds.includes(t.id));
+  const isEmptyNote = editor?.isEmpty ?? true;
 
   return (
     <div className="flex flex-col h-full">
@@ -259,6 +300,24 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }
           {saveStatus === "saved" && (
             <span className="text-xs text-green-500 shrink-0">Saved</span>
           )}
+          {isEditMode && isEmptyNote && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleImportClick}
+              className="h-8 gap-1.5 shrink-0"
+              title="Import note (.md, .txt)"
+            >
+              <Import className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".md,.txt,text/markdown,text/plain"
+            className="hidden"
+            onChange={handleImportFileChange}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -291,6 +350,15 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange }
               {isSubmitting || saveStatus === "saving" ? "Saving…" : <><Save className="h-3.5 w-3.5" />Save</>}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExport}
+            className="h-8 gap-1.5 shrink-0"
+            title="Export note (.md)"
+          >
+            <SquareArrowRightExit className="h-3.5 w-3.5" />
+          </Button>
         </div>
 
         {/* Meta row */}
