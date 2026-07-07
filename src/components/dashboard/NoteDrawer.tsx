@@ -1,14 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { toast } from "sonner";
-import { Check, Eye, Folder, Import, Pencil, Save, SquareArrowRightExit, Tag } from "lucide-react";
+import {
+  Check,
+  Eye,
+  Folder,
+  Import,
+  Pencil,
+  Pin,
+  Save,
+  SquareArrowRightExit,
+  Star,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { validateImportFile, deriveTitleFromFilename } from "@/lib/note-import";
 import { buildExportContent, buildExportFilename } from "@/lib/note-export";
 import {
@@ -48,6 +71,8 @@ interface NoteData {
   title: string;
   content: string;
   collectionId: string | null;
+  isPinned: boolean;
+  isFavorite: boolean;
   tags: { id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
@@ -58,6 +83,7 @@ interface NoteDrawerProps {
   startInEditMode?: boolean;
   onEditModeChange?: (isEditMode: boolean) => void;
   onTitleSaved?: (title: string) => void;
+  onDeleted?: () => void;
 }
 
 type SaveStatus = "idle" | "saving" | "saved";
@@ -70,7 +96,8 @@ function formatDate(iso: string) {
   });
 }
 
-export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, onTitleSaved }: NoteDrawerProps) {
+export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, onTitleSaved, onDeleted }: NoteDrawerProps) {
+  const router = useRouter();
   const [isEditMode, setIsEditMode] = useState(startInEditMode ?? false);
   const [title, setTitle] = useState("Untitled Note");
   const [collectionId, setCollectionId] = useState("");
@@ -82,6 +109,10 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [isPinned, setIsPinned] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isLoaded = useRef(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +122,8 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   const doAutoSaveRef = useRef<() => Promise<boolean>>(async () => false);
   // Stable ref so the editor's onUpdate (captured once at creation) always calls the latest scheduler
   const scheduleAutoSaveRef = useRef<() => void>(() => {});
+  // Tracks last-persisted collection/tags so autosave only refreshes the sidebar when they actually change
+  const lastMetaRef = useRef<{ collectionId: string; tagIds: string }>({ collectionId: "", tagIds: "" });
 
   const pendingContent = useRef<string | null>(null);
 
@@ -162,6 +195,8 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     setCreatedAt(null);
     setUpdatedAt(null);
     setSaveStatus("idle");
+    setIsPinned(false);
+    setIsFavorite(false);
     setEditorContent("");
 
     async function loadNote() {
@@ -176,7 +211,13 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
       setSelectedTagIds(note.tags.map((t) => t.id));
       setCreatedAt(note.createdAt);
       setUpdatedAt(note.updatedAt);
+      setIsPinned(note.isPinned);
+      setIsFavorite(note.isFavorite);
       setEditorContent(note.content ?? "");
+      lastMetaRef.current = {
+        collectionId: note.collectionId ?? "",
+        tagIds: [...note.tags.map((t) => t.id)].sort().join(","),
+      };
       isLoaded.current = true;
     }
     loadNote();
@@ -215,13 +256,20 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
         savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
         onTitleSaved?.(title);
+
+        // Only refresh the sidebar (collection/tag counts) when the note's collection or tags actually changed
+        const nextTagIds = [...selectedTagIds].sort().join(",");
+        if (data.collectionId !== lastMetaRef.current.collectionId || nextTagIds !== lastMetaRef.current.tagIds) {
+          lastMetaRef.current = { collectionId: data.collectionId, tagIds: nextTagIds };
+          router.refresh();
+        }
         return true;
       } catch {
         setSaveStatus("idle");
         return false;
       }
     };
-  }, [noteId, title, collectionId, selectedTagIds, editor, onTitleSaved]);
+  }, [noteId, title, collectionId, selectedTagIds, editor, onTitleSaved, router]);
 
   async function handleSubmit() {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -257,6 +305,58 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     toast.success("File imported");
   }
 
+  async function handleTogglePinned() {
+    const next = !isPinned;
+    setIsPinned(next);
+    try {
+      const res = await fetch(`/api/dashboard/note/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: next }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(next ? "Note pinned" : "Note unpinned");
+      router.refresh();
+    } catch {
+      setIsPinned(!next);
+      toast.error("Failed to update note");
+    }
+  }
+
+  async function handleToggleFavorite() {
+    const next = !isFavorite;
+    setIsFavorite(next);
+    try {
+      const res = await fetch(`/api/dashboard/note/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: next }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(next ? "Note added to favorites" : "Note removed from favorites");
+      router.refresh();
+    } catch {
+      setIsFavorite(!next);
+      toast.error("Failed to update note");
+    }
+  }
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/dashboard/note/${noteId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Note deleted");
+      setDeleteConfirmOpen(false);
+      onDeleted?.();
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete note");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   function handleExport() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
@@ -274,11 +374,36 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   const isEmptyNote = editor?.isEmpty ?? true;
 
   return (
+    <>
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b px-4 py-3 space-y-2 bg-background">
         {/* Title + actions row */}
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleTogglePinned}
+              className={cn(
+                isPinned ? "text-primary/30" : "text-muted-foreground",
+              )}
+              title={isPinned ? "Unpin note" : "Pin note"}
+            >
+              <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleToggleFavorite}
+              className={cn(
+                isFavorite ? "text-primary/30" : "text-muted-foreground",
+              )}
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
+            </Button>
+          </div>
           <div className="flex-1 min-w-0">
             {isEditMode ? (
               <Input
@@ -350,6 +475,15 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
               {isSubmitting || saveStatus === "saving" ? "Saving…" : <><Save className="h-3.5 w-3.5" />Save</>}
             </Button>
           )}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteConfirmOpen(true)}
+            className="h-8 gap-1.5 shrink-0"
+            title="Delete note"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -463,5 +597,33 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         <EditorContent editor={editor} />
       </div>
     </div>
+
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader className="place-items-stretch sm:place-items-stretch text-left">
+          <AlertDialogTitle className="text-xl font-bold">
+            Delete note?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-base font-semibold [text-wrap:unset]">
+            &ldquo;
+            {title.length > 20 ? title.slice(0, 20) + "…" : title}
+            &rdquo; will be permanently deleted. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? "Deleting…" : "Delete"}
+          </AlertDialogAction>
+          <AlertDialogCancel disabled={isDeleting} className="w-full mt-0">
+            Cancel
+          </AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -222,6 +222,24 @@ export async function updateNote(
   return { status: "ok", id: note.id, collectionId: note.collectionId };
 }
 
+export async function updateNoteFlags(
+  noteId: string,
+  userId: string,
+  data: { isPinned?: boolean; isFavorite?: boolean },
+): Promise<{ id: string; isPinned: boolean; isFavorite: boolean } | null> {
+  const existing = await prisma.note.findFirst({
+    where: { id: noteId, userId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  return prisma.note.update({
+    where: { id: noteId },
+    data,
+    select: { id: true, isPinned: true, isFavorite: true },
+  });
+}
+
 export async function deleteNote(
   noteId: string,
   userId: string,

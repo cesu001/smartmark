@@ -236,6 +236,7 @@ function WorkbenchContent() {
               else editModeNoteIds.current.delete(activeTabId);
             }}
             onTitleSaved={handleTitleSaved}
+            onDeleted={() => handleCloseTab(activeTabId)}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserId } from "@/lib/auth-utils";
-import { getNoteDetail, updateNote, deleteNote } from "@/lib/db/notes";
+import { getNoteDetail, updateNote, updateNoteFlags, deleteNote } from "@/lib/db/notes";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -46,6 +46,33 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   return NextResponse.json({ id: result.id, collectionId: result.collectionId });
+}
+
+const updateFlagsSchema = z
+  .object({
+    isPinned: z.boolean().optional(),
+    isFavorite: z.boolean().optional(),
+  })
+  .refine((data) => data.isPinned !== undefined || data.isFavorite !== undefined, {
+    message: "At least one flag is required",
+  });
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const userId = await requireUserId();
+  const { id } = await params;
+
+  const body = await request.json();
+  const parsed = updateFlagsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  const result = await updateNoteFlags(id, userId, parsed.data);
+  if (!result) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(result);
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {

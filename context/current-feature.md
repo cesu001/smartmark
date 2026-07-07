@@ -1,19 +1,26 @@
-# Current Feature
+# Current Feature: Drawer Pin, Favorite & Delete
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add Pin and Favorite icon buttons to the left of the note title in `NoteDrawer`
+- Both icons render outline/muted by default; after toggling on, they switch to filled with primary color at 30% opacity background
+- Add a Delete button (destructive variant) positioned between the Save and Export buttons in the drawer header
+- Delete requires a second confirmation via an `AlertDialog` before the note is removed
+- Show a toast on pin, unpin, favorite, unfavorite, and delete
 
 ## References
 
-<!-- Add references here -->
+- @context/features/note-drawer-spec3.md
 
 ## Notes
 
+- Pin/Favorite likely need a `PATCH`/`PUT` to `/api/dashboard/note/[id]` (or reuse existing update route) to persist `isPinned`/`isFavorite` — check existing `updateNote` in `src/lib/db/notes.ts` for reuse
+- Delete should reuse the existing `DELETE /api/dashboard/note/[id]` route (ownership-enforced) already used by `AppNoteCard`'s delete flow
+- After delete, the drawer's tab should close (mirrors `handleCloseTab` behavior in workbench)
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
 - **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
