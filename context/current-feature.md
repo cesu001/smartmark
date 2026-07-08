@@ -1,34 +1,89 @@
-# Current Feature
+# Current Feature: AI RAG Search (Semantic Note Search)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- **Embedding pipeline** — add `src/lib/ai/embeddings.ts` with `embedNoteContent(noteId, text)`:
+  - Uses `embed()` from `ai` with `EMBEDDING_MODEL`
+  - Writes via `prisma.$executeRaw` (the `embedding` column is `Unsupported("vector(1536)")`, invisible to normal Prisma Client — cast the array literal to `::vector`)
+  - No-op on empty/whitespace-only content
+  - Cap/truncate content before sending (`text-embedding-3-small` hard-limits at 8192 tokens)
+- **Wire embedding into note writes** — call `embedNoteContent` from `createNote`/`updateNote` in `src/lib/db/notes.ts` after the note write succeeds, wrapped in `.catch()` so an embedding failure never blocks the save (same pattern as R2 cleanup in `deleteUser`).
+- **Search queries** — in `src/lib/db/notes.ts`:
+  - `searchNotesByEmbedding(userId, queryEmbedding, limit = 10)` — `$queryRaw`, ordered by pgvector's `<=>` cosine-distance operator, `userId`-scoped, returns `{ id, title, updatedAt, similarity }[]`
+  - `searchNotesByTitle(userId, query, limit)` — case-insensitive substring match on `Note.title`, `userId`-scoped, returns `{ id, title, updatedAt }[]`
+- **API route** — `POST /api/dashboard/search/semantic`:
+  - `requireUserId()` → `requireProUser()` → `applyRateLimit(aiSearchLimiter, userId)` → Zod-validate `{ query: string }` → run title-match + (embed → semantic) search → return **two separate lists** `{ titleMatches, semanticMatches }`
+  - Apply the ~0.75 similarity threshold to the **semantic** list only; title matches always show
+- **Frontend** — add the search bar to the **mid-top of the page** (top-center), not the right sidebar:
+  - Show results in a **single dropdown menu** split into **two sections**: top = title matches, bottom = semantic matches
+  - Create a **new result-row component** (do not reuse `AppNoteCard`) showing the note title and last-updated time; for semantic rows show the similarity score subtly (muted percentage)
+  - Debounced input, loading spinner while embedding + searching
 
 ## References
 
-<!-- Add references here -->
+- Spec: `context/features/ai-rag-search-spec.md`
+- Full rationale: `docs/ai-integration-plan.md` §3–4
+- Depends on **AI Setup** (already landed): `requireProUser`, `aiSearchLimiter`, `src/lib/ai/client.ts` (`EMBEDDING_MODEL`), HNSW index on `Note.embedding`
+- Reused by the upcoming **AI Chatbot** feature for retrieval — don't duplicate embedding/search logic there
 
 ## Notes
 
-- **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
-- **TODO:** Auto-save does not flush before tab close/switch — if the user types and closes or switches tabs within 1 second, those changes are lost. Root cause is broader than `handleCloseTab`: `NoteDrawer.tsx`'s own note-load effect cleanup unconditionally `clearTimeout`s the pending debounce on every `noteId` change (close **or** switch). Fix: in that cleanup, flush (call `doAutoSaveRef.current()`) instead of just clearing, so it covers both triggers from a single change in `NoteDrawer.tsx`.
-- **TODO by code scanner (medium):** `NoteDrawer.tsx` note-load `useEffect` (~lines 188-231) has no stale-fetch guard — if a user switches tabs quickly (note A → note B) and fetch A resolves after fetch B, note A's title/content/pin/favorite/tags silently overwrite the UI even though note B is displayed. Fix: track an `ignore` flag set in the effect cleanup and skip `setState` calls when it's true.
-- **TODO by code scanner (low):** Delete-confirmation `AlertDialog` is duplicated near-verbatim between `NoteDrawer.tsx` and `AppNoteCard.tsx` (same `handleDelete` shape, same dialog markup/classNames, same 20-char title truncation, same toasts). Extract a shared `DeleteNoteDialog` component or `useDeleteNote(noteId)` hook and use it from both.
-- **TODO by code scanner (low):** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
-- **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
-- **TODO by code scanner (low):** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
-- **TODO by code scanner (low):** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
-- **TODO by code scanner (low):** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
-- **TODO by code scanner (low):** `src/components/dashboard/ＭodeToggle.tsx` uses a fullwidth Unicode "Ｍ" in the filename instead of ASCII "M" — rename to `ModeToggle.tsx` and update the import in `AppNavbar.tsx`.
-- **TODO by code scanner (low):** `workbench/page.tsx` tab serialization (`${id}_${encodeURIComponent(title)}` split on `_`) truncates note titles containing underscores when parsing back out. Fix: use a delimiter unaffected by `encodeURIComponent`, or parse with `indexOf`/`slice` instead of `split` destructuring.
-- **TODO by code scanner (low, refactor):** `SidebarAddCollection.tsx` and `SidebarAddTag.tsx` are ~95% duplicated — extract a shared `SidebarInlineAddForm` component or `useInlineCreate` hook.
-- **TODO by code scanner (low, refactor):** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
-- **TODO by code scanner (low, performance):** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
-- **TODO (low, cleanup):** `src/components/dashboard/EntityActionsMenu.tsx` — `const label = type === "collection" ? "collection" : "tag"` is redundant since `label` always equals `type`; simplify to use `type` directly.
+### Files Changed (explain)
+
+**src/lib/ai/embeddings.ts** (new)
+The embedding pipeline. `embedText(text)` turns any string into a 1536-dim vector via the AI SDK's `embed()` with `text-embedding-3-small`; `embedNoteContent(noteId, text)` embeds a note's content and writes it to the `Unsupported("vector(1536)")` column with `prisma.$executeRaw` (`::vector` cast), no-op'ing on empty content. Key pattern: **token-accurate truncation** — `js-tiktoken` (`cl100k_base`), dynamic-imported and memoized so its ~1.7MB rank table only loads on first embed, caps input at 8000 tokens so long CJK notes don't overflow the 8192-token limit.
+
+**src/lib/db/notes.ts** (modified)
+Added the two search functions and wired embedding into writes. `searchNotesByTitle` is a case-insensitive `contains` on the title; `searchNotesByEmbedding` is a `$queryRaw` ordered by pgvector's `<=>` cosine distance, returning `similarity = 1 - distance`, `userId`-scoped. `createNote`/`updateNote` now call a fire-and-forget `refreshNoteEmbedding` (`.catch`-wrapped so it never blocks a save) — and `updateNote` **skips it when content is unchanged** to avoid redundant OpenAI calls on metadata-only autosaves.
+
+**src/app/api/dashboard/search/semantic/route.ts** (new)
+The `POST` endpoint: `requireUserId()` → `requireProUser()` → `applyRateLimit(aiSearchLimiter)` → Zod-validate `{ query }`, then returns `{ titleMatches, semanticMatches }` as two lists. Two deliberate patterns: the **semantic half runs in its own try/catch** so an OpenAI failure still returns title matches, and the **0.35 similarity threshold** (calibrated down from the spec's 0.75, which was wrong for this model) filters only the semantic list. Catches `ForbiddenError` → 403.
+
+**src/components/dashboard/SearchBar.tsx** (new)
+Client component in the navbar. Debounced (350ms) fetch with a `requestId` stale-response guard, a two-section dropdown (title / semantic), full keyboard nav (↑/↓ highlight, Enter opens, Escape closes), clear-on-select, and open-on-type. Clicking/selecting a result routes to the workbench, merging into existing tabs when already there.
+
+**src/components/dashboard/SearchResultRow.tsx** (new)
+The dedicated result row (title + last-updated date, muted similarity % for semantic rows) — intentionally *not* `AppNoteCard`. Uses `onMouseDown`+`preventDefault` to keep input focus, and scrolls itself into view when it's the active keyboard row.
+
+**src/components/dashboard/AppNavbar.tsx** (modified)
+Restructured to `flex items-center` with `<SearchBar />` centered between the sidebar toggle and theme toggle — this is the "mid-top of the page" placement.
+
+**src/lib/ai/embeddings.test.ts** (new) · **src/lib/db/notes.test.ts** (modified)
+Unit coverage: embed no-op on empty, real-tokenizer truncation check, and the search-function mappings; plus createNote-embeds, updateNote skip-when-unchanged / re-embed-on-change. 72/72 pass.
+
+**package.json / package-lock.json** (modified)
+Added `js-tiktoken` as a runtime dependency.
+
+**How it all connects:** Write path — save a note → `createNote`/`updateNote` → fire-and-forget `embedText` (tokenizer-truncated) → OpenAI → `$executeRaw` stores the vector. Read path — type in `SearchBar` → debounced `POST /api/dashboard/search/semantic` → `searchNotesByTitle` (SQL, free) runs alongside `embedText(query)` → `searchNotesByEmbedding` (pgvector `<=>`, HNSW-indexed) → two lists back → rendered as two dropdown sections of `SearchResultRow` → selecting one opens the note in the workbench. The embedding module is the shared seam the future Chatbot feature will reuse for retrieval.
+
+- **✅ Fully verified end-to-end** after billing was added to the OpenAI account (key value unchanged). Embedding-on-save stores a 1536-dim `vector` (confirmed in DB via `vector_dims`), and semantic ranking works: query "how do plants make energy from sunlight" matched the plant note at **61%** with **zero title/keyword overlap**; an unrelated query ("javascript async await…") correctly returned nothing.
+- **⚠️ Threshold fix (real bug found during verification):** the spec's `0.75` similarity threshold was **far too high for `text-embedding-3-small`** — it filtered out genuine matches (the 61% note would have been rejected). Measured empirically: related ≈ 0.61, unrelated < 0.05. **Shipped threshold = 0.35** (`route.ts`). Note for later: this was calibrated against a single embedded note; revisit if real-corpus results show noise leaking in or relevant notes missing.
+- **Review fixes applied (3):** (1) **Token-accurate truncation** — replaced the English-only 30k-char cap with a real 8000-token cap via `js-tiktoken` (`cl100k_base`, dynamic-imported so the ~1.7MB rank table only loads on first embed). The old char cap would have overflowed the 8192-token limit for Traditional Chinese notes (~1–2.5 tokens/char), silently dropping their embeddings — critical since this is a zh-TW app. (2) **Skip redundant embedding** — `updateNote` now re-embeds only when `content` actually changed, so metadata-only autosaves (collection/tag reassignment) no longer burn an OpenAI call. (3) **429 UX** — `SearchBar` now surfaces the rate limiter's specific "try again in N minutes" message instead of a generic error. Re-verified: 72/72 tests pass, build clean, semantic search still returns the 61% match through the new tokenizer path.
+- **Review pass 2 — UX polish applied:** (1) `SearchBar` now **clears the query and highlight after selecting a result**. (2) Added **keyboard navigation** to the dropdown — ↑/↓ move a highlighted row (with scroll-into-view via `SearchResultRow`), Enter opens the highlighted note, Escape closes. Rows switched from `onClick` to `onMouseDown`+`preventDefault` so mouse selection keeps input focus and beats the outside-click handler. This surfaced (and fixed) a regression: because the input keeps focus after selection, `onFocus` alone wouldn't reopen the dropdown on the next keystroke, so **open-on-type** was added to `onChange`. All verified in-browser (Playwright/Firefox): arrow-highlight, Enter-select, Escape-close, clear-on-select, and reopen-on-type.
+- **Design decision (added during impl):** The search route runs the **semantic half in its own try/catch** — an embedding/OpenAI failure returns empty `semanticMatches` but **title matches always still return** (they never touch OpenAI). Verified while the key was still over quota: "testing" returned the "Component Testing with Vitest" title match while Semantic showed "No semantic matches".
+- **Test setup / backfill:** Flipped `demo@smartmark.io` to `isPro = true` on the Neon **development** branch to exercise the Pro-gated route (password `123456`). Only the "Photosynthesis…" note ("Untitled Note", id `cmrbv7il6…`) has an embedding so far — **all pre-existing notes still have none** and won't appear in semantic results until re-saved. A one-off backfill script over existing notes would be a reasonable follow-up.
+
+## TODOs
+
+- `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
+- Auto-save does not flush before tab close/switch — if the user types and closes or switches tabs within 1 second, those changes are lost. Root cause is broader than `handleCloseTab`: `NoteDrawer.tsx`'s own note-load effect cleanup unconditionally `clearTimeout`s the pending debounce on every `noteId` change (close **or** switch). Fix: in that cleanup, flush (call `doAutoSaveRef.current()`) instead of just clearing, so it covers both triggers from a single change in `NoteDrawer.tsx`.
+- **(code scanner, medium)** `NoteDrawer.tsx` note-load `useEffect` (~lines 188-231) has no stale-fetch guard — if a user switches tabs quickly (note A → note B) and fetch A resolves after fetch B, note A's title/content/pin/favorite/tags silently overwrite the UI even though note B is displayed. Fix: track an `ignore` flag set in the effect cleanup and skip `setState` calls when it's true.
+- **(code scanner, low)** Delete-confirmation `AlertDialog` is duplicated near-verbatim between `NoteDrawer.tsx` and `AppNoteCard.tsx` (same `handleDelete` shape, same dialog markup/classNames, same 20-char title truncation, same toasts). Extract a shared `DeleteNoteDialog` component or `useDeleteNote(noteId)` hook and use it from both.
+- **(code scanner, low)** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
+- Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
+- **(code scanner, low)** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
+- **(code scanner, low)** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
+- **(code scanner, low)** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
+- **(code scanner, low)** `src/components/dashboard/ＭodeToggle.tsx` uses a fullwidth Unicode "Ｍ" in the filename instead of ASCII "M" — rename to `ModeToggle.tsx` and update the import in `AppNavbar.tsx`.
+- **(code scanner, low)** `workbench/page.tsx` tab serialization (`${id}_${encodeURIComponent(title)}` split on `_`) truncates note titles containing underscores when parsing back out. Fix: use a delimiter unaffected by `encodeURIComponent`, or parse with `indexOf`/`slice` instead of `split` destructuring.
+- **(code scanner, low, refactor)** `SidebarAddCollection.tsx` and `SidebarAddTag.tsx` are ~95% duplicated — extract a shared `SidebarInlineAddForm` component or `useInlineCreate` hook.
+- **(code scanner, low, refactor)** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
+- **(code scanner, low, performance)** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
+- **(low, cleanup)** `src/components/dashboard/EntityActionsMenu.tsx` — `const label = type === "collection" ? "collection" : "tag"` is redundant since `label` always equals `type`; simplify to use `type` directly.
 - **Note (not a bug):** code scanner flagged `NoteDrawer.tsx`'s Pin/Favorite active-state color (`text-primary/30`, fainter than the inactive `text-muted-foreground`) as "inverted" vs. `AppColCard.tsx`'s solid-color active-favorite convention. This was an explicit user design choice ("just change icon's color to primary/30"), not an oversight — left as-is, noted here in case it's revisited later.
 
 ## History

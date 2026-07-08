@@ -7,8 +7,11 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       delete: vi.fn(),
     },
+    $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
   },
 }));
 
@@ -21,18 +24,32 @@ vi.mock("@/lib/db/tags", () => ({
   verifyTagsOwnership: vi.fn(),
 }));
 
+vi.mock("@/lib/ai/embeddings", () => ({
+  embedNoteContent: vi.fn().mockResolvedValue(undefined),
+  embedText: vi.fn(),
+}));
+
 import { prisma } from "@/lib/db";
 import { verifyCollectionOwnership, getOrCreateDraftCollection } from "@/lib/db/collections";
 import { verifyTagsOwnership } from "@/lib/db/tags";
-import { createNote, updateNote, deleteNote } from "@/lib/db/notes";
+import { embedNoteContent } from "@/lib/ai/embeddings";
+import {
+  createNote,
+  updateNote,
+  deleteNote,
+  searchNotesByTitle,
+  searchNotesByEmbedding,
+} from "@/lib/db/notes";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
 const mockedVerifyCollectionOwnership = vi.mocked(verifyCollectionOwnership);
 const mockedGetOrCreateDraftCollection = vi.mocked(getOrCreateDraftCollection);
 const mockedVerifyTagsOwnership = vi.mocked(verifyTagsOwnership);
+const mockedEmbedNoteContent = vi.mocked(embedNoteContent);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockedEmbedNoteContent.mockResolvedValue(undefined);
 });
 
 describe("createNote", () => {
@@ -74,6 +91,21 @@ describe("createNote", () => {
     });
 
     expect(result).toEqual({ status: "ok", id: "note-1" });
+  });
+
+  it("triggers an embedding refresh after a successful create", async () => {
+    mockedVerifyCollectionOwnership.mockResolvedValue(true);
+    mockedVerifyTagsOwnership.mockResolvedValue(true);
+    mockedPrisma.note.create.mockResolvedValue({ id: "note-1" } as never);
+
+    await createNote("user-1", {
+      title: "t",
+      content: "hello world",
+      collectionId: "col-1",
+      tagIds: [],
+    });
+
+    expect(mockedEmbedNoteContent).toHaveBeenCalledWith("note-1", "hello world");
   });
 
   it("skips collection ownership check when collectionId is not provided", async () => {
@@ -142,6 +174,38 @@ describe("updateNote", () => {
     expect(result).toEqual({ status: "invalid_tags" });
     expect(mockedPrisma.note.update).not.toHaveBeenCalled();
   });
+
+  it("skips the embedding refresh when content is unchanged", async () => {
+    mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1", content: "same" } as never);
+    mockedGetOrCreateDraftCollection.mockResolvedValue("draft-1");
+    mockedVerifyTagsOwnership.mockResolvedValue(true);
+    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: "draft-1" } as never);
+
+    await updateNote("note-1", "user-1", {
+      title: "new title",
+      content: "same",
+      collectionId: null,
+      tagIds: [],
+    });
+
+    expect(mockedEmbedNoteContent).not.toHaveBeenCalled();
+  });
+
+  it("re-embeds when content changed", async () => {
+    mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1", content: "old" } as never);
+    mockedGetOrCreateDraftCollection.mockResolvedValue("draft-1");
+    mockedVerifyTagsOwnership.mockResolvedValue(true);
+    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: "draft-1" } as never);
+
+    await updateNote("note-1", "user-1", {
+      title: "t",
+      content: "new content",
+      collectionId: null,
+      tagIds: [],
+    });
+
+    expect(mockedEmbedNoteContent).toHaveBeenCalledWith("note-1", "new content");
+  });
 });
 
 describe("deleteNote", () => {
@@ -161,5 +225,49 @@ describe("deleteNote", () => {
     mockedPrisma.note.findUnique.mockResolvedValue({ userId: "user-1" } as never);
     expect(await deleteNote("note-1", "user-1")).toBe(true);
     expect(mockedPrisma.note.delete).toHaveBeenCalledWith({ where: { id: "note-1" } });
+  });
+});
+
+describe("searchNotesByTitle", () => {
+  it("scopes by userId with a case-insensitive contains and maps updatedAt to ISO", async () => {
+    const updatedAt = new Date("2026-07-08T10:00:00.000Z");
+    mockedPrisma.note.findMany.mockResolvedValue([
+      { id: "note-1", title: "React hooks", updatedAt },
+    ] as never);
+
+    const results = await searchNotesByTitle("user-1", "react");
+
+    expect(mockedPrisma.note.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user-1",
+          title: { contains: "react", mode: "insensitive" },
+        },
+      }),
+    );
+    expect(results).toEqual([
+      { id: "note-1", title: "React hooks", updatedAt: updatedAt.toISOString() },
+    ]);
+  });
+});
+
+describe("searchNotesByEmbedding", () => {
+  it("maps raw rows to the result shape with numeric similarity and ISO updatedAt", async () => {
+    const updatedAt = new Date("2026-07-08T10:00:00.000Z");
+    mockedPrisma.$queryRaw.mockResolvedValue([
+      { id: "note-1", title: "Vectors", updatedAt, similarity: 0.91 },
+    ] as never);
+
+    const results = await searchNotesByEmbedding("user-1", [0.1, 0.2, 0.3]);
+
+    expect(mockedPrisma.$queryRaw).toHaveBeenCalled();
+    expect(results).toEqual([
+      {
+        id: "note-1",
+        title: "Vectors",
+        updatedAt: updatedAt.toISOString(),
+        similarity: 0.91,
+      },
+    ]);
   });
 });

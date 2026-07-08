@@ -6,6 +6,18 @@ import {
   getOrCreateDraftCollection,
 } from "./collections";
 import { verifyTagsOwnership } from "./tags";
+import { embedNoteContent } from "@/lib/ai/embeddings";
+
+/**
+ * Fire-and-forget embedding refresh. An embedding failure (OpenAI down, quota,
+ * etc.) must never block the note save — same pattern as R2 cleanup not blocking
+ * account deletion in `deleteUser`.
+ */
+function refreshNoteEmbedding(noteId: string, content: string): void {
+  void embedNoteContent(noteId, content).catch((err) => {
+    console.error(`Failed to embed note ${noteId}:`, err);
+  });
+}
 
 const noteTagInclude = {
   tags: {
@@ -174,6 +186,8 @@ export async function createNote(
     select: { id: true },
   });
 
+  refreshNoteEmbedding(note.id, data.content);
+
   return { status: "ok", id: note.id };
 }
 
@@ -190,7 +204,7 @@ export async function updateNote(
 ): Promise<UpdateNoteResult> {
   const existing = await prisma.note.findFirst({
     where: { id: noteId, userId },
-    select: { id: true },
+    select: { id: true, content: true },
   });
   if (!existing) return { status: "not_found" };
 
@@ -218,6 +232,13 @@ export async function updateNote(
     },
     select: { id: true, collectionId: true },
   });
+
+  // Only re-embed when the content actually changed. Metadata-only edits
+  // (collection/tag reassignment via the autosave path) would otherwise burn a
+  // redundant OpenAI embedding call on identical text.
+  if (existing.content !== data.content) {
+    refreshNoteEmbedding(note.id, data.content);
+  }
 
   return { status: "ok", id: note.id, collectionId: note.collectionId };
 }
@@ -252,4 +273,64 @@ export async function deleteNote(
 
   await prisma.note.delete({ where: { id: noteId } });
   return true;
+}
+
+export interface NoteSearchResult {
+  id: string;
+  title: string;
+  updatedAt: string;
+  similarity?: number;
+}
+
+/**
+ * Case-insensitive title substring match. Always shown in search results,
+ * independent of the semantic similarity threshold.
+ */
+export async function searchNotesByTitle(
+  userId: string,
+  query: string,
+  limit = 10,
+): Promise<NoteSearchResult[]> {
+  const notes = await prisma.note.findMany({
+    where: { userId, title: { contains: query, mode: "insensitive" } },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: { id: true, title: true, updatedAt: true },
+  });
+  return notes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    updatedAt: n.updatedAt.toISOString(),
+  }));
+}
+
+/**
+ * Semantic nearest-neighbour search over note embeddings using pgvector's
+ * `<=>` cosine-distance operator (matching the HNSW `vector_cosine_ops` index).
+ * `similarity` is `1 - cosineDistance`, so higher is closer. Scoped by `userId`.
+ */
+export async function searchNotesByEmbedding(
+  userId: string,
+  queryEmbedding: number[],
+  limit = 10,
+): Promise<NoteSearchResult[]> {
+  const vectorLiteral = `[${queryEmbedding.join(",")}]`;
+
+  const rows = await prisma.$queryRaw<
+    { id: string; title: string; updatedAt: Date; similarity: number }[]
+  >`
+    SELECT id, title, "updatedAt",
+           1 - (embedding <=> ${vectorLiteral}::vector) AS similarity
+    FROM "Note"
+    WHERE "userId" = ${userId} AND embedding IS NOT NULL
+    ORDER BY embedding <=> ${vectorLiteral}::vector
+    LIMIT ${limit}
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    updatedAt: r.updatedAt.toISOString(),
+    similarity: Number(r.similarity),
+  }));
 }
