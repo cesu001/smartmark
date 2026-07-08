@@ -1,21 +1,34 @@
-# Current Feature
+# Current Feature: AI Setup (Foundation)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Install `ai`, `@ai-sdk/openai`, `@ai-sdk/react`
+- Create `src/lib/ai/client.ts` exporting `CHAT_MODEL` (`gpt-5.4-nano`) and `EMBEDDING_MODEL` (`text-embedding-3-small`) via `createOpenAI({ apiKey: process.env.OPENAI_API_KEY })`
+- **Decision: use the Vercel AI SDK for every AI call — embeddings, generation, and streaming alike.** No raw `openai` package.
+- Add `requireProUser(userId)` to `src/lib/auth-utils.ts`, next to `requireUserId()` — queries `User.isPro` directly from the DB (not session/JWT), 403 when false
+- Add `aiChatLimiter` (20/1h), `aiSummaryLimiter` (30/1h), `aiSearchLimiter` (60/1h) to `src/lib/rate-limit.ts`, reusing the existing `applyRateLimit()` helper
+- Add an HNSW index migration for `Note.embedding` (`CREATE INDEX CONCURRENTLY ... USING hnsw (embedding vector_cosine_ops)`), hand-edited via `prisma migrate dev --create-only`
 
 ## References
 
-<!-- Add references here -->
+- @context/features/ai-setup-spec.md
+- @docs/ai-integration-plan.md
 
 ## Notes
 
+- No user-facing feature in this branch — pure shared infrastructure (SDK client, Pro gating, rate limiters, vector index) that the AI Chatbot, Summarizing, and RAG Search features all build on
+- This branch should land before Chatbot/Summarizing/RAG Search start, since all three depend on `requireProUser`, the rate limiters, and `src/lib/ai/client.ts`
+- Keep everything as Route Handlers (`src/app/api/...`), not Server Actions — matches the existing convention (no `src/actions/` directory exists in this repo)
+- `OPENAI_API_KEY` is already documented in `.env.example` — no new env var needed
 - **TODO:** `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
-- **TODO:** Auto-save does not flush before tab close — if the user types and closes the tab within 1 second, those changes are lost. Fix: flush the pending auto-save timer synchronously in `handleCloseTab` before removing the tab from the URL.
+- **TODO:** Auto-save does not flush before tab close/switch — if the user types and closes or switches tabs within 1 second, those changes are lost. Root cause is broader than `handleCloseTab`: `NoteDrawer.tsx`'s own note-load effect cleanup unconditionally `clearTimeout`s the pending debounce on every `noteId` change (close **or** switch). Fix: in that cleanup, flush (call `doAutoSaveRef.current()`) instead of just clearing, so it covers both triggers from a single change in `NoteDrawer.tsx`.
+- **TODO by code scanner (medium):** `NoteDrawer.tsx` note-load `useEffect` (~lines 188-231) has no stale-fetch guard — if a user switches tabs quickly (note A → note B) and fetch A resolves after fetch B, note A's title/content/pin/favorite/tags silently overwrite the UI even though note B is displayed. Fix: track an `ignore` flag set in the effect cleanup and skip `setState` calls when it's true.
+- **TODO by code scanner (low):** Delete-confirmation `AlertDialog` is duplicated near-verbatim between `NoteDrawer.tsx` and `AppNoteCard.tsx` (same `handleDelete` shape, same dialog markup/classNames, same 20-char title truncation, same toasts). Extract a shared `DeleteNoteDialog` component or `useDeleteNote(noteId)` hook and use it from both.
+- **TODO by code scanner (low):** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
 - **TODO:** Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
 - **TODO by code scanner (low):** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
 - **TODO by code scanner (low):** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
@@ -26,6 +39,7 @@ Not Started
 - **TODO by code scanner (low, refactor):** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
 - **TODO by code scanner (low, performance):** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
 - **TODO (low, cleanup):** `src/components/dashboard/EntityActionsMenu.tsx` — `const label = type === "collection" ? "collection" : "tag"` is redundant since `label` always equals `type`; simplify to use `type` directly.
+- **Note (not a bug):** code scanner flagged `NoteDrawer.tsx`'s Pin/Favorite active-state color (`text-primary/30`, fainter than the inactive `text-muted-foreground`) as "inverted" vs. `AppColCard.tsx`'s solid-color active-favorite convention. This was an explicit user design choice ("just change icon's color to primary/30"), not an oversight — left as-is, noted here in case it's revisited later.
 
 ## History
 

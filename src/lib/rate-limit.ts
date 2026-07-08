@@ -28,6 +28,24 @@ export const resetPasswordLimiter = new Ratelimit({
   prefix: "rl:reset",
 });
 
+export const aiChatLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(20, "1 h"),
+  prefix: "rl:ai-chat",
+});
+
+export const aiSummaryLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "1 h"),
+  prefix: "rl:ai-summary",
+});
+
+export const aiSearchLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, "1 h"),
+  prefix: "rl:ai-search",
+});
+
 export function getIP(request: Request): string {
   const xff = request.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0].trim();
