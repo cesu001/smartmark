@@ -13,12 +13,11 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
-  Bookmark,
   ChevronDown,
   CircleUser,
   Heart,
   Notebook,
-  Settings,
+  Pin,
 } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -57,7 +56,7 @@ const quickAccessItems = [
     icon: Heart,
     key: "favorite",
   },
-  { title: "Pinned", url: "/dashboard/pinned", icon: Bookmark, key: "pinned" },
+  { title: "Pinned", url: "/dashboard/pinned", icon: Pin, key: "pinned" },
 ];
 const AppSidebar = async () => {
   const { id: userId, email: userEmail } = await requireUser();
@@ -73,9 +72,11 @@ const AppSidebar = async () => {
 
   const userName = dbUser?.name;
   const userImage = dbUser?.image;
+  const favoriteCollections = collections.filter((c) => c.isFavorite).length;
+  const favoriteTags = tags.filter((t) => t.isFavorite).length;
   const counts: Record<string, number> = {
     all: noteCounts.total,
-    favorite: noteCounts.favorites,
+    favorite: noteCounts.favorites + favoriteCollections + favoriteTags,
     pinned: noteCounts.pinned,
   };
   return (
@@ -166,6 +167,7 @@ const AppSidebar = async () => {
                       id={tag.id}
                       name={tag.name}
                       noteCount={tag.noteCount}
+                      isFavorite={tag.isFavorite}
                     />
                   ))}
                 </SidebarMenu>
@@ -206,10 +208,12 @@ const AppSidebar = async () => {
                     <span>Account</span>
                   </Link>
                 </DropdownMenuItem>
+                {/* Settings entry hidden for now
                 <DropdownMenuItem>
                   <Settings />
                   <span>Setting</span>
                 </DropdownMenuItem>
+                */}
                 <DropdownMenuSeparator />
                 <LogoutMenuItem />
               </DropdownMenuContent>

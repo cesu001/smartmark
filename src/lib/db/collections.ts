@@ -54,11 +54,12 @@ export async function getRecentCollection(userId: string, limit = 3) {
 export async function getCollectionWithNotes(
   collectionId: string,
   userId: string,
-): Promise<{ name: string; notes: Note[] } | null> {
+): Promise<{ name: string; isFavorite: boolean; notes: Note[] } | null> {
   const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
     select: {
       name: true,
+      isFavorite: true,
       notes: {
         where: { userId },
         orderBy: { updatedAt: "desc" },
@@ -73,6 +74,7 @@ export async function getCollectionWithNotes(
   if (!collection) return null;
   return {
     name: collection.name,
+    isFavorite: collection.isFavorite,
     notes: collection.notes.map((n) => ({
       id: n.id,
       title: n.title,
@@ -153,6 +155,24 @@ export async function updateCollectionName(
     where: { id: collectionId },
     data: { name },
     select: { id: true, name: true },
+  });
+}
+
+export async function updateCollectionFavorite(
+  collectionId: string,
+  userId: string,
+  isFavorite: boolean,
+): Promise<{ id: string; isFavorite: boolean } | null> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  return prisma.collection.update({
+    where: { id: collectionId },
+    data: { isFavorite },
+    select: { id: true, isFavorite: true },
   });
 }
 

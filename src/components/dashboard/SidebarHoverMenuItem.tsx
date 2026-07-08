@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bookmark, FileText, Folder } from "lucide-react";
+import { FileText, Folder, Tag } from "lucide-react";
 import {
   SidebarMenuBadge,
   SidebarMenuButton,
@@ -45,7 +45,7 @@ export default function SidebarHoverMenuItem({
     type === "collection"
       ? `/dashboard/collection/${id}`
       : `/dashboard/tag/${id}`;
-  const Icon = type === "collection" ? Folder : Bookmark;
+  const Icon = type === "collection" ? Folder : Tag;
 
   const fetchNotes = async () => {
     if (notesCache.current !== null) {
@@ -140,9 +140,7 @@ export default function SidebarHoverMenuItem({
         <SidebarMenuButton asChild>
           <Link href={href}>
             <Icon
-              className={cn(
-                type === "collection" && isFavorite && "text-green-600",
-              )}
+              className={cn(isFavorite && "text-primary/30 fill-current")}
             />
             <span className="text-sm text-muted-foreground">{name}</span>
             <SidebarMenuBadge>{noteCount}</SidebarMenuBadge>

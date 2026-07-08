@@ -22,6 +22,7 @@ import {
   getOrCreateDraftCollection,
   getCollectionStats,
   updateCollectionName,
+  updateCollectionFavorite,
   deleteCollectionAndNotes,
 } from "@/lib/db/collections";
 
@@ -94,6 +95,31 @@ describe("updateCollectionName", () => {
     expect(await updateCollectionName("col-1", "user-1", "New Name")).toEqual({
       id: "col-1",
       name: "New Name",
+    });
+  });
+});
+
+describe("updateCollectionFavorite", () => {
+  it("returns null when the collection doesn't belong to the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null);
+    expect(await updateCollectionFavorite("col-1", "user-1", true)).toBeNull();
+    expect(mockedPrisma.collection.update).not.toHaveBeenCalled();
+  });
+
+  it("updates isFavorite when owned by the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ id: "col-1" } as never);
+    mockedPrisma.collection.update.mockResolvedValue({
+      id: "col-1",
+      isFavorite: true,
+    } as never);
+    expect(await updateCollectionFavorite("col-1", "user-1", true)).toEqual({
+      id: "col-1",
+      isFavorite: true,
+    });
+    expect(mockedPrisma.collection.update).toHaveBeenCalledWith({
+      where: { id: "col-1" },
+      data: { isFavorite: true },
+      select: { id: true, isFavorite: true },
     });
   });
 });

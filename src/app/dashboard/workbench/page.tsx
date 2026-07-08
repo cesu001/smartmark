@@ -25,6 +25,8 @@ function WorkbenchContent() {
   // 從 URL 參數中獲取當前活動的 Tab ID、標題和所有 Tab 的資訊
   const activeTabId = searchParams.get("open") || "";
   const currentTitle = searchParams.get("title") || "untitled";
+  // A fresh note (e.g. from the "Add new note" card) requests edit mode via ?edit=1
+  const wantEdit = searchParams.get("edit") === "1";
   // 所有分頁
   // tabs 參數格式：tabs=noteId_encodedTitle,noteId_encodedTitle,...
   const tabsParam = searchParams.get("tabs") || "";
@@ -42,6 +44,10 @@ function WorkbenchContent() {
   };
   // 將新的open id 和 title 加入到 tabs 中，並更新 URL 參數
   useEffect(() => {
+    // Remember the edit-mode request so it survives the URL cleanup below and tab switches
+    if (activeTabId && wantEdit) {
+      editModeNoteIds.current.add(activeTabId);
+    }
     if (activeTabId && !tabs.some((tab) => tab.id === activeTabId)) {
       const updatedTabs = [...tabs, { id: activeTabId, title: currentTitle }];
       const newTabsParam = serializedTabs(updatedTabs);
@@ -50,7 +56,7 @@ function WorkbenchContent() {
       );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTabId, currentTitle, tabsParam, router]);
+  }, [activeTabId, currentTitle, tabsParam, wantEdit, router]);
 
   async function handleNewNote() {
     setIsCreatingNote(true);
@@ -230,7 +236,7 @@ function WorkbenchContent() {
         {activeTabId ? (
           <NoteDrawer
             noteId={activeTabId}
-            startInEditMode={editModeNoteIds.current.has(activeTabId)}
+            startInEditMode={editModeNoteIds.current.has(activeTabId) || wantEdit}
             onEditModeChange={(isEdit) => {
               if (isEdit) editModeNoteIds.current.add(activeTabId);
               else editModeNoteIds.current.delete(activeTabId);
