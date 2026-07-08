@@ -7,11 +7,12 @@ import type { Note } from "@/types/dashboard";
 export async function getTagWithNotes(
   tagId: string,
   userId: string,
-): Promise<{ name: string; notes: Note[] } | null> {
+): Promise<{ name: string; isFavorite: boolean; notes: Note[] } | null> {
   const tag = await prisma.tag.findFirst({
     where: { id: tagId, userId },
     select: {
       name: true,
+      isFavorite: true,
       notes: {
         where: { note: { userId } },
         orderBy: { note: { updatedAt: "desc" } },
@@ -30,6 +31,7 @@ export async function getTagWithNotes(
   if (!tag) return null;
   return {
     name: tag.name,
+    isFavorite: tag.isFavorite,
     notes: tag.notes.map(({ note: n }) => ({
       id: n.id,
       title: n.title,
@@ -124,6 +126,24 @@ export async function updateTagName(
     where: { id: tagId },
     data: { name },
     select: { id: true, name: true },
+  });
+}
+
+export async function updateTagFavorite(
+  tagId: string,
+  userId: string,
+  isFavorite: boolean,
+): Promise<{ id: string; isFavorite: boolean } | null> {
+  const existing = await prisma.tag.findFirst({
+    where: { id: tagId, userId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  return prisma.tag.update({
+    where: { id: tagId },
+    data: { isFavorite },
+    select: { id: true, isFavorite: true },
   });
 }
 

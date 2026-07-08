@@ -12,7 +12,12 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { prisma } from "@/lib/db";
-import { verifyTagsOwnership, updateTagName, deleteTag } from "@/lib/db/tags";
+import {
+  verifyTagsOwnership,
+  updateTagName,
+  updateTagFavorite,
+  deleteTag,
+} from "@/lib/db/tags";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
 
@@ -50,6 +55,31 @@ describe("updateTagName", () => {
     expect(await updateTagName("tag-1", "user-1", "New Name")).toEqual({
       id: "tag-1",
       name: "New Name",
+    });
+  });
+});
+
+describe("updateTagFavorite", () => {
+  it("returns null when the tag doesn't belong to the user", async () => {
+    mockedPrisma.tag.findFirst.mockResolvedValue(null);
+    expect(await updateTagFavorite("tag-1", "user-1", true)).toBeNull();
+    expect(mockedPrisma.tag.update).not.toHaveBeenCalled();
+  });
+
+  it("updates isFavorite when owned by the user", async () => {
+    mockedPrisma.tag.findFirst.mockResolvedValue({ id: "tag-1" } as never);
+    mockedPrisma.tag.update.mockResolvedValue({
+      id: "tag-1",
+      isFavorite: true,
+    } as never);
+    expect(await updateTagFavorite("tag-1", "user-1", true)).toEqual({
+      id: "tag-1",
+      isFavorite: true,
+    });
+    expect(mockedPrisma.tag.update).toHaveBeenCalledWith({
+      where: { id: "tag-1" },
+      data: { isFavorite: true },
+      select: { id: true, isFavorite: true },
     });
   });
 });
