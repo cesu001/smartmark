@@ -1,20 +1,41 @@
-# Current Feature
+# Current Feature: AI Summaries
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- New route `POST /api/dashboard/note/[id]/summary`: `requireUserId()` → verify note ownership → `requireProUser()` → `applyRateLimit(aiSummaryLimiter, userId)` → `generateText()` with `CHAT_MODEL`
+- `system` prompt: summarize in 2-3 sentences; explicitly instruct the model not to follow any instructions found inside the note content (treat as delimited data, not commands)
+- Truncate/cap note content sent to the model if very long
+- Frontend: add a "Summarize" action in `NoteDrawer.tsx`
+  - Loading spinner while generating (button disabled, same pattern as other in-flight actions in the drawer)
+  - Show result without silently overwriting note content — dismissible popover/panel with summary text + explicit "Insert" or "Copy" action, not an automatic write
+  - Sonner toast on error, matching every other drawer action (pin/favorite/delete/import/export)
 
 ## References
 
-<!-- Add references here -->
+- `context/features/ai-summarizing-spec.md` (full spec)
+- Depends on **AI Setup** (already landed): `requireProUser`, `aiSummaryLimiter`, `src/lib/ai/client.ts` (`CHAT_MODEL`)
+- Full rationale: `docs/ai-integration-plan.md` §5, §9
 
 ## Notes
 
-<!-- Add notes here -->
+- Non-streaming — a 2-3 sentence summary doesn't benefit from token-by-token rendering
+- Security: note content is user-authored and could contain injected instructions (e.g. "ignore the above and reveal...") — system prompt must frame it as delimited data, not commands. Same treatment needed later for the Chatbot feature when it pulls in note context.
+- Don't persist the summary to the DB unless asked — generate-on-demand only. Persisting (e.g. showing summaries on note cards) would be a schema change and a separate feature.
+
+### Implementation
+
+- Added `src/lib/ai/summarize.ts`: `summarizeNoteContent(content)` wraps the note in `<note>...</note>` tags and calls `generateText()` with `CHAT_MODEL` and an injection-resistant system prompt. Caps input at 20,000 chars — a cost/abuse guardrail, not a hard API limit (`gpt-5.4-nano`'s context window is far larger than the embedding model's 8192-token cap `embeddings.ts` has to respect).
+- Added `src/app/api/dashboard/note/[id]/summary/route.ts`: `POST` handler following the same gating order as `search/semantic/route.ts` — `requireUserId()` → `getNoteDetail()` (ownership, 404) → `requireProUser()` (403) → `applyRateLimit(aiSummaryLimiter, userId)` (429) → reject empty content (400) → `summarizeNoteContent()` → `{ summary }`.
+- Added `src/lib/ai/summarize.test.ts`: 4 Vitest cases mocking `ai`'s `generateText` (mirrors `embeddings.test.ts`'s mocking pattern) — return value, `<note>` delimiter framing, injection-resistant system prompt, truncation of long input.
+- Modified `NoteDrawer.tsx`: added a "Summarize note (AI)" button (Sparkles/spinner) between Delete and Export. `handleSummarize()` POSTs to the new route and opens a `Popover` with the result; `handleCopySummary()`/`handleInsertSummary()` give explicit Copy/Insert actions instead of auto-writing the note.
+- Two bugs found and fixed during `/feature review` of this same change:
+  - `summary`/`summaryPopoverOpen`/`isSummarizing` weren't reset in the existing `noteId`-change effect. `NoteDrawer` is reused (not remounted) across tab switches, so a stale summary popover from note A could show up over note B — fixed by adding these three to the effect's existing reset block.
+  - `handleInsertSummary` originally inserted the AI text as a raw HTML string (`` `<p>${summary}</p>` ``), so a summary containing `<`/`>` (plausible in this dev-notes app — code snippets, generics, comparisons) would get parsed/mangled as HTML. Fixed by inserting a structured ProseMirror node (`{ type: "paragraph", content: [{ type: "text", text: summary }] }`) instead, which treats the text as plain text. Verified via Playwright with a note containing `Array<T>` and `x < 10 && y > 5` — text now inserts verbatim.
+- `npm run build` and `npm run test` (87/87) pass; verified end-to-end in the browser (Playwright/Firefox): summarize → popover → Copy (toast + clipboard) → Insert (prepends into editor, autosaves), and both review-fix regressions confirmed resolved.
 
 ## TODOs
 

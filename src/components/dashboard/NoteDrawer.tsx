@@ -8,12 +8,15 @@ import { Markdown } from "tiptap-markdown";
 import { toast } from "sonner";
 import {
   Check,
+  Copy,
   Eye,
   Folder,
   Import,
+  Loader2,
   Pencil,
   Pin,
   Save,
+  Sparkles,
   SquareArrowRightExit,
   Star,
   Tag,
@@ -113,6 +116,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   const [isFavorite, setIsFavorite] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryPopoverOpen, setSummaryPopoverOpen] = useState(false);
 
   const isLoaded = useRef(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +204,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     setIsPinned(false);
     setIsFavorite(false);
     setEditorContent("");
+    setSummary(null);
+    setSummaryPopoverOpen(false);
+    setIsSummarizing(false);
 
     async function loadNote() {
       const res = await fetch(`/api/dashboard/note/${noteId}`);
@@ -357,6 +366,43 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     }
   }
 
+  async function handleSummarize() {
+    setIsSummarizing(true);
+    try {
+      const res = await fetch(`/api/dashboard/note/${noteId}/summary`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Failed to generate summary");
+      setSummary(data.summary as string);
+      setSummaryPopoverOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate summary");
+    } finally {
+      setIsSummarizing(false);
+    }
+  }
+
+  function handleInsertSummary() {
+    if (!summary) return;
+    editor
+      ?.chain()
+      .focus()
+      .insertContentAt(0, { type: "paragraph", content: [{ type: "text", text: summary }] })
+      .run();
+    scheduleAutoSaveRef.current();
+    setSummaryPopoverOpen(false);
+    toast.success("Summary inserted");
+  }
+
+  async function handleCopySummary() {
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success("Summary copied");
+    } catch {
+      toast.error("Failed to copy summary");
+    }
+  }
+
   function handleExport() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
@@ -484,6 +530,36 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
+          <Popover open={summaryPopoverOpen} onOpenChange={setSummaryPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSummarize}
+                disabled={isSummarizing}
+                className="h-8 gap-1.5 shrink-0"
+                title="Summarize note (AI)"
+              >
+                {isSummarizing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 space-y-3" align="end">
+              <p className="text-sm">{summary}</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={handleCopySummary} className="gap-1.5">
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy
+                </Button>
+                <Button size="sm" onClick={handleInsertSummary} className="gap-1.5">
+                  Insert
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             variant="ghost"
             size="sm"
