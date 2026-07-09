@@ -22,7 +22,7 @@ export default async function Page() {
         <h2 className="text-lg font-semibold mb-4">Favorite Notes</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {notes.length === 0 ? (
-            <div className="flex items-center justify-center min-h-32 border border-dashed border-muted-foreground/20 rounded-xl text-sm text-muted-foreground italic">
+            <div className="col-span-full flex items-center justify-center min-h-32 border border-dashed border-muted-foreground/20 rounded-xl text-sm text-muted-foreground italic">
               No favorite notes yet
             </div>
           ) : (
@@ -42,7 +42,7 @@ export default async function Page() {
         <h2 className="text-lg font-semibold mb-4">Favorite Collections</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {collections.length === 0 ? (
-            <div className="flex items-center justify-center min-h-32 border border-dashed border-muted-foreground/20 rounded-xl text-sm text-muted-foreground italic">
+            <div className="col-span-full flex items-center justify-center min-h-32 border border-dashed border-muted-foreground/20 rounded-xl text-sm text-muted-foreground italic">
               No favorite collections yet
             </div>
           ) : (
@@ -56,7 +56,7 @@ export default async function Page() {
         <h2 className="text-lg font-semibold mb-4">Favorite Tags</h2>
         <div className="flex flex-wrap gap-3">
           {tags.length === 0 ? (
-            <div className="flex items-center justify-center min-h-32 w-fit min-w-48 border border-dashed border-muted-foreground/20 rounded-xl px-6 text-sm text-muted-foreground italic">
+            <div className="flex items-center justify-center min-h-32 w-full border border-dashed border-muted-foreground/20 rounded-xl text-sm text-muted-foreground italic">
               No favorite tags yet
             </div>
           ) : (

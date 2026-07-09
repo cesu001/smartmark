@@ -1,20 +1,24 @@
-# Current Feature
+# Current Feature: Pinned Empty State + Favorites Dashed Block Width Consistency
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- `src/app/dashboard/pinned/page.tsx` currently renders nothing when there are no pinned notes (no `notes.length === 0` branch at all). Add a dashed empty-state block matching the established convention used on the collection/tag pages (`col-span-full`, `border border-dashed border-muted-foreground/20 rounded-xl`, centered italic muted text), e.g. "No pinned notes yet."
+- On `src/app/dashboard/favorites/page.tsx`, the three empty-state dashed blocks (Favorite Notes, Favorite Collections, Favorite Tags) currently render at inconsistent widths: the Notes/Collections blocks sit in a 4-col grid without `col-span-full` (so they're only ~1/4 width), while the Tags block uses `flex flex-wrap` with `w-fit min-w-48` (a fixed 192px min-width). Make all three the same full-content width — align them with the `col-span-full` dashed-block convention already used on the collection/tag pages.
 
 ## References
 
-<!-- Add references here -->
+- Established empty-state pattern: `src/app/dashboard/collection/[id]/page.tsx:39-45` and `src/app/dashboard/tag/[id]/page.tsx` (`col-span-full flex items-center justify-center min-h-48 border border-dashed border-muted-foreground/20 rounded-xl`, `text-sm text-muted-foreground italic` text).
+- Current inconsistent blocks: `src/app/dashboard/favorites/page.tsx` (notes ~line 25, collections ~line 44, tags ~line 61).
+- Pinned page with no empty state: `src/app/dashboard/pinned/page.tsx`.
 
 ## Notes
 
-<!-- Add notes here -->
+- Pinned page grid is `grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4` — same column setup as collection/tag pages, so the same `col-span-full` block should drop in directly.
+- Favorites Tags section is a `flex flex-wrap` container, not a grid, so "same width" there means matching the visual width/height of the Notes/Collections dashed blocks (not literally `col-span-full`, since there's no grid to span) — likely switching Tags' empty state to `w-full` (or wrapping consistently) so all three read as the same-width block instead of the current narrow `min-w-48` box.
 
 ## TODOs
 
