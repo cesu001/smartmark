@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Markdown } from "tiptap-markdown";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { getContentPreview } from "@/lib/note-preview";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import {
@@ -34,6 +38,21 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const previewContent = getContentPreview(note.content);
+  const hasContent = Boolean(previewContent);
+
+  const editor = useEditor({
+    extensions: [StarterKit, Markdown],
+    content: previewContent,
+    editable: false,
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: "note-preview text-sm text-text-secondary",
+      },
+    },
+  });
 
   async function handleDelete() {
     setDeleting(true);
@@ -84,8 +103,12 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
         </CardTitle>
-        <CardContent className="line-clamp-3 h-full">
-          {note.content}
+        <CardContent className="flex-1 min-h-15 max-h-24 overflow-hidden">
+          {hasContent ? (
+            <EditorContent editor={editor} />
+          ) : (
+            <p className="text-sm italic text-text-secondary">Empty content</p>
+          )}
         </CardContent>
         <CardFooter>
           <div className="w-full flex items-center justify-between gap-2 mt-auto">
