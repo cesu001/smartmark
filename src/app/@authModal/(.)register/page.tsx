@@ -20,7 +20,7 @@ export default function RegisterModal() {
             Welcome !
           </DialogTitle>
           <DialogDescription>
-            Choose your registration method and get started with SmartMark.
+            Choose your registration method and get started with Smark.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">

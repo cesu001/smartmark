@@ -13,7 +13,7 @@ export default async function RegisterPage() {
         <div className="flex flex-col items-center gap-2 mb-8">
           <h1 className="text-2xl font-bold mb-3">Welcome Back !</h1>
           <p className="text-sm text-muted-foreground">
-            Choose your login method and get started with SmartMark.
+            Choose your login method and get started with Smark.
           </p>
         </div>
         <div className="flex flex-col gap-4">

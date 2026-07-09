@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SmartMark",
+  title: "Smark",
   description: "AI-powered Markdown notes and knowledge base",
 };
 

@@ -20,7 +20,7 @@ export default function LoginModal() {
             Welcome !
           </DialogTitle>
           <DialogDescription>
-            Choose your login method and get started with SmartMark.
+            Choose your login method and get started with Smark.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">

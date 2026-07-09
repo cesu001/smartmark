@@ -85,7 +85,7 @@ const AppSidebar = async () => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <span>SmartMark</span>
+              <span>Smark</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

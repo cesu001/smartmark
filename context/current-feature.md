@@ -1,4 +1,4 @@
-# Current Feature
+# Current Feature: Deploy Check
 
 ## Status
 
@@ -6,15 +6,26 @@ Not Started
 
 ## Goals
 
-<!-- Add goals here -->
+- Review the TODOs list below and identify which items are must-do before deploying to Vercel (vs. nice-to-have/deferred).
+- Rename the website from "SmartMark" to "Smark" (page titles, metadata, on-screen branding/logo text).
+- Add a favicon featuring an "S" for the site.
 
 ## References
 
-<!-- Add references here -->
+- `context/features/deploy-check.md` — source spec for this feature
 
 ## Notes
 
-<!-- Add notes here -->
+- This is a pre-deploy audit + a branding/favicon change, not a new app feature.
+- Deploy target is Vercel.
+- **Env var setup for Vercel** (Project Settings → Environment Variables). All vars in `.env`/`.env.example` need to be added, but not all as straight copies:
+  - **Copy as-is:** `RESEND_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`, `OPENAI_API_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — external service keys, not environment-specific.
+  - **Needs a different value than local `.env`:**
+    - `DATABASE_URL` / `DIRECT_URL` — must point at the Neon **`production`** branch (`br-holy-wave-a1n7abmd`), not `development` (`br-shy-forest-a1nazhr1`) that local dev uses.
+    - `NEXT_PUBLIC_APP_URL` — must be the real production URL, not `localhost:3000`.
+    - `NEXTAUTH_SECRET` — can reuse the local value or generate a fresh one (`openssl rand -base64 32`).
+  - **Chicken-and-egg (URL doesn't exist until first deploy):** Deploy once first — Vercel auto-assigns a stable production URL (e.g. `https://smark.vercel.app`) even before any of this is configured. Then: (1) set `NEXT_PUBLIC_APP_URL` to that URL, (2) add `https://<that-url>/api/auth/callback/github` to the GitHub OAuth app's Authorization callback URLs (github.com/settings/developers) — otherwise "Sign in with GitHub" fails on the live site, (3) redeploy so the `NEXT_PUBLIC_*` var (baked in at build time) takes effect. If a custom domain is added later, repeat steps 1–3 for that domain.
+- **Decision (this deploy): ship on the free `.vercel.app` URL, no custom domain yet.** A custom domain is required for Resend sending-domain verification — the free `.vercel.app` subdomain doesn't work for this since Vercel controls its DNS, not the user. So the forgot-password hardcoded-recipient limitation (see TODOs) stays as-is for this deploy; tightened the inline comment in `forgot-password/route.ts` to document why rather than looking like leftover debug code. Revisit both (custom domain + real recipient email) once a domain is purchased.
 
 ## TODOs
 

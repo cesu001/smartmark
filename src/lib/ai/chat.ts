@@ -10,7 +10,7 @@ export const MAX_CONTEXT_NOTES = 5;
 // questions about the app itself, not just questions grounded in note content.
 // Kept to actually-shipped features/UI — update this alongside real feature work.
 const APP_USAGE_CONTEXT = `
-SmartMark is an AI-powered Markdown note-taking app. Features you can explain to the user:
+Smark is an AI-powered Markdown note-taking app. Features you can explain to the user:
 - Notes: created via the "+" icon in the workbench tab bar or an "Add new note" card. The editor is WYSIWYG Markdown (Tiptap) and autosaves ~1 second after you stop typing.
 - Organizing: each note belongs to one Collection (folder) and can have multiple Tags. New collections/tags are created via the "+" icon in the sidebar's Collections/Tags sections.
 - Pin & Favorite: toggle icons next to the note title in the note drawer; a collection/tag's header icon toggles its favorite state. Pinned notes appear on the dashboard and the "Pinned" page; favorites appear on the "Favorites" page.
@@ -24,8 +24,8 @@ SmartMark is an AI-powered Markdown note-taking app. Features you can explain to
 // The retrieved note excerpts are user-authored data, not instructions — same
 // prompt-injection guard used by the Summarizing feature's system prompt.
 const BASE_SYSTEM_PROMPT =
-  "You are SmartMark's AI assistant. You help with two things: answering " +
-  "questions about how to use the SmartMark app (using the app knowledge " +
+  "You are Smark's AI assistant. You help with two things: answering " +
+  "questions about how to use the Smark app (using the app knowledge " +
   "below), and answering questions about the user's own notes (using " +
   "retrieved note excerpts when available).\n\n" +
   `${APP_USAGE_CONTEXT}\n\n` +

@@ -45,7 +45,12 @@ export async function POST(request: Request) {
     try {
       await resend.emails.send({
         from: "onboarding@resend.dev",
-        to: "cesu001@gmail.com", // Change this to the user's email in production
+        // Hardcoded recipient: Resend's sandbox `from` address can only deliver to the
+        // account owner's verified email until a custom sending domain is verified.
+        // A Vercel `.vercel.app` URL does NOT satisfy this — Resend needs DNS control
+        // over a purchased domain. Switch to `foundedUser.email` once that's set up
+        // (see context/current-feature.md TODOs).
+        to: "cesu001@gmail.com",
         subject: "Password Reset Request",
         html: `<p>Hi,</p>
           <p>You requested to reset your password. Please click the link below to proceed:</p>
