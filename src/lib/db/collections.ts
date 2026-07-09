@@ -25,6 +25,34 @@ export const getAllCollectionsWithCounts = cache(async (userId: string) => {
   });
 });
 
+export interface CollectionSearchResult {
+  id: string;
+  name: string;
+  noteCount: number;
+}
+
+/**
+ * Case-insensitive title substring match, mirrors `searchNotesByTitle` in
+ * `notes.ts`. No semantic/embedding search for collections.
+ */
+export async function searchCollectionsByTitle(
+  userId: string,
+  query: string,
+  limit = 10,
+): Promise<CollectionSearchResult[]> {
+  const collections = await prisma.collection.findMany({
+    where: { userId, name: { contains: query, mode: "insensitive" } },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: { id: true, name: true, _count: { select: { notes: true } } },
+  });
+  return collections.map((c) => ({
+    id: c.id,
+    name: c.name,
+    noteCount: c._count.notes,
+  }));
+}
+
 export async function getCollectionStats(
   userId: string,
 ): Promise<{ total: number; favorites: number }> {

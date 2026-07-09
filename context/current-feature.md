@@ -1,20 +1,28 @@
-# Current Feature
+# Current Feature: Searchbar Feature 01 (Collections & Tags Title Search)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add collection and tag title-matching search results to the existing `SearchBar` dropdown
+- Results for collections/tags appear below the existing semantic (note) search results
+- Only title matching for collections/tags (no semantic/embedding search for these two)
+- Clicking a collection/tag result navigates to its corresponding page (`/dashboard/collection/[id]` or `/dashboard/tag/[id]`)
+- Show title and note count for each result (instead of last-updated time, which notes show)
+- Create new component(s) if needed rather than overloading existing ones
 
 ## References
 
-<!-- Add references here -->
+- `context/features/searchbar-feature01.md`
+- Existing search infra from AI RAG Search feature: `SearchBar` (navbar client component), `SearchResultRow`, `POST /api/dashboard/search/semantic`, `searchNotesByTitle`/`searchNotesByEmbedding` in `src/lib/db/notes.ts`
 
 ## Notes
 
-<!-- Add notes here -->
+- This extends the existing note search dropdown (title + semantic matches) rather than replacing it
+- Need title-matching queries for Collections and Tags, scoped by `userId`, likely mirroring `searchNotesByTitle`'s case-insensitive `contains` pattern
+- Need note counts per collection/tag result — check for existing count helpers (e.g. `getAllCollectionsWithCounts`, `getAllTags`) before adding new queries
 
 ## TODOs
 

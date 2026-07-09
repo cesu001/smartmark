@@ -80,6 +80,34 @@ export const getAllTags = cache(async (userId: string): Promise<Tag[]> => {
   }));
 });
 
+export interface TagSearchResult {
+  id: string;
+  name: string;
+  noteCount: number;
+}
+
+/**
+ * Case-insensitive title substring match, mirrors `searchNotesByTitle` in
+ * `notes.ts`. No semantic/embedding search for tags.
+ */
+export async function searchTagsByTitle(
+  userId: string,
+  query: string,
+  limit = 10,
+): Promise<TagSearchResult[]> {
+  const tags = await prisma.tag.findMany({
+    where: { userId, name: { contains: query, mode: "insensitive" } },
+    orderBy: { name: "asc" },
+    take: limit,
+    select: { id: true, name: true, _count: { select: { notes: true } } },
+  });
+  return tags.map((t) => ({
+    id: t.id,
+    name: t.name,
+    noteCount: t._count.notes,
+  }));
+}
+
 export async function getTagNames(
   userId: string,
 ): Promise<{ id: string; name: string }[]> {

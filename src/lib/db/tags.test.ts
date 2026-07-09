@@ -5,6 +5,7 @@ vi.mock("@/lib/db", () => ({
     tag: {
       count: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
@@ -17,6 +18,7 @@ import {
   updateTagName,
   updateTagFavorite,
   deleteTag,
+  searchTagsByTitle,
 } from "@/lib/db/tags";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
@@ -81,6 +83,26 @@ describe("updateTagFavorite", () => {
       data: { isFavorite: true },
       select: { id: true, isFavorite: true },
     });
+  });
+});
+
+describe("searchTagsByTitle", () => {
+  it("scopes by userId with a case-insensitive contains and maps noteCount", async () => {
+    mockedPrisma.tag.findMany.mockResolvedValue([
+      { id: "tag-1", name: "React", _count: { notes: 3 } },
+    ] as never);
+
+    const results = await searchTagsByTitle("user-1", "react");
+
+    expect(mockedPrisma.tag.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user-1",
+          name: { contains: "react", mode: "insensitive" },
+        },
+      }),
+    );
+    expect(results).toEqual([{ id: "tag-1", name: "React", noteCount: 3 }]);
   });
 });
 

@@ -21,6 +21,7 @@ import {
   verifyCollectionOwnership,
   getOrCreateDraftCollection,
   getCollectionStats,
+  searchCollectionsByTitle,
   updateCollectionName,
   updateCollectionFavorite,
   deleteCollectionAndNotes,
@@ -76,6 +77,28 @@ describe("getCollectionStats", () => {
   it("returns zeros when the user has no collections", async () => {
     mockedPrisma.collection.findMany.mockResolvedValue([]);
     expect(await getCollectionStats("user-1")).toEqual({ total: 0, favorites: 0 });
+  });
+});
+
+describe("searchCollectionsByTitle", () => {
+  it("scopes by userId with a case-insensitive contains and maps noteCount", async () => {
+    mockedPrisma.collection.findMany.mockResolvedValue([
+      { id: "col-1", name: "React Notes", _count: { notes: 4 } },
+    ] as never);
+
+    const results = await searchCollectionsByTitle("user-1", "react");
+
+    expect(mockedPrisma.collection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user-1",
+          name: { contains: "react", mode: "insensitive" },
+        },
+      }),
+    );
+    expect(results).toEqual([
+      { id: "col-1", name: "React Notes", noteCount: 4 },
+    ]);
   });
 });
 

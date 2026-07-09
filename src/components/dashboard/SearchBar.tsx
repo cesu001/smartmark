@@ -7,11 +7,22 @@ import { Input } from "@/components/ui/input";
 import SearchResultRow, {
   type SearchResultNote,
 } from "./SearchResultRow";
+import SearchResultEntityRow, {
+  type SearchResultEntity,
+} from "./SearchResultEntityRow";
 
 interface SearchResponse {
   titleMatches: SearchResultNote[];
   semanticMatches: SearchResultNote[];
+  collectionMatches: SearchResultEntity[];
+  tagMatches: SearchResultEntity[];
 }
+
+// A single item in the keyboard-navigable flat list, tagged with its kind so
+// Enter/click can route to the right destination (workbench vs. collection/tag page).
+type FlatItem =
+  | { kind: "note"; note: SearchResultNote }
+  | { kind: "collection" | "tag"; entity: SearchResultEntity };
 
 const DEBOUNCE_MS = 350;
 
@@ -119,11 +130,31 @@ export default function SearchBar() {
     }
   }
 
+  function handleSelectEntity(
+    entity: SearchResultEntity,
+    type: "collection" | "tag",
+  ) {
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
+    router.push(`/dashboard/${type}/${entity.id}`);
+  }
+
   const hasQuery = query.trim().length > 0;
   const titleMatches = results?.titleMatches ?? [];
   const semanticMatches = results?.semanticMatches ?? [];
-  // Flat, keyboard-navigable order: title matches first, then semantic.
-  const flatResults = [...titleMatches, ...semanticMatches];
+  const collectionMatches = results?.collectionMatches ?? [];
+  const tagMatches = results?.tagMatches ?? [];
+  // Flat, keyboard-navigable order: notes (title, then semantic), then
+  // collections, then tags — matches the section order rendered below.
+  const flatResults: FlatItem[] = [
+    ...titleMatches.map((note): FlatItem => ({ kind: "note", note })),
+    ...semanticMatches.map((note): FlatItem => ({ kind: "note", note })),
+    ...collectionMatches.map(
+      (entity): FlatItem => ({ kind: "collection", entity }),
+    ),
+    ...tagMatches.map((entity): FlatItem => ({ kind: "tag", entity })),
+  ];
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") {
@@ -141,7 +172,11 @@ export default function SearchBar() {
       const selected = flatResults[activeIndex];
       if (selected) {
         e.preventDefault();
-        handleSelect(selected);
+        if (selected.kind === "note") {
+          handleSelect(selected.note);
+        } else {
+          handleSelectEntity(selected.entity, selected.kind);
+        }
       }
     }
   }
@@ -151,7 +186,9 @@ export default function SearchBar() {
     !error &&
     results !== null &&
     titleMatches.length === 0 &&
-    semanticMatches.length === 0;
+    semanticMatches.length === 0 &&
+    collectionMatches.length === 0 &&
+    tagMatches.length === 0;
 
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
@@ -167,7 +204,7 @@ export default function SearchBar() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search notes by meaning or title…"
+          placeholder="Search notes, collections, tags…"
           className="pl-9 pr-9 h-9"
         />
         {loading && (
@@ -183,7 +220,7 @@ export default function SearchBar() {
 
           {!error && noResults && (
             <p className="px-3 py-3 text-xs text-muted-foreground text-center">
-              No notes found
+              No results found
             </p>
           )}
 
@@ -227,6 +264,61 @@ export default function SearchBar() {
                 ) : (
                   <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
                     {loading ? "Searching…" : "No semantic matches"}
+                  </p>
+                )}
+              </section>
+
+              <div className="border-t border-border" />
+
+              <section>
+                <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Collections
+                </p>
+                {collectionMatches.length > 0 ? (
+                  collectionMatches.map((c, i) => (
+                    <SearchResultEntityRow
+                      key={c.id}
+                      entity={c}
+                      type="collection"
+                      active={
+                        activeIndex ===
+                        titleMatches.length + semanticMatches.length + i
+                      }
+                      onSelect={handleSelectEntity}
+                    />
+                  ))
+                ) : (
+                  <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
+                    {loading ? "Searching…" : "No collection matches"}
+                  </p>
+                )}
+              </section>
+
+              <div className="border-t border-border" />
+
+              <section>
+                <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Tags
+                </p>
+                {tagMatches.length > 0 ? (
+                  tagMatches.map((t, i) => (
+                    <SearchResultEntityRow
+                      key={t.id}
+                      entity={t}
+                      type="tag"
+                      active={
+                        activeIndex ===
+                        titleMatches.length +
+                          semanticMatches.length +
+                          collectionMatches.length +
+                          i
+                      }
+                      onSelect={handleSelectEntity}
+                    />
+                  ))
+                ) : (
+                  <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
+                    {loading ? "Searching…" : "No tag matches"}
                   </p>
                 )}
               </section>

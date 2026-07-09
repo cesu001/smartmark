@@ -7,6 +7,8 @@ import {
   searchNotesByTitle,
   searchNotesByEmbedding,
 } from "@/lib/db/notes";
+import { searchCollectionsByTitle } from "@/lib/db/collections";
+import { searchTagsByTitle } from "@/lib/db/tags";
 
 // Discard semantic matches below this cosine similarity so an unrelated query
 // doesn't return noise. Title matches are exempt — they always show.
@@ -37,7 +39,12 @@ export async function POST(request: Request) {
 
     const query = parsed.data.query.trim();
     if (!query) {
-      return NextResponse.json({ titleMatches: [], semanticMatches: [] });
+      return NextResponse.json({
+        titleMatches: [],
+        semanticMatches: [],
+        collectionMatches: [],
+        tagMatches: [],
+      });
     }
 
     // Title matches never touch OpenAI, so they must survive an embedding
@@ -56,13 +63,24 @@ export async function POST(request: Request) {
         return [];
       }
     })();
+    // Collections and tags only ever get title matching, no semantic search.
+    const collectionMatchesPromise = searchCollectionsByTitle(userId, query);
+    const tagMatchesPromise = searchTagsByTitle(userId, query);
 
-    const [titleMatches, semanticMatches] = await Promise.all([
-      titleMatchesPromise,
-      semanticPromise,
-    ]);
+    const [titleMatches, semanticMatches, collectionMatches, tagMatches] =
+      await Promise.all([
+        titleMatchesPromise,
+        semanticPromise,
+        collectionMatchesPromise,
+        tagMatchesPromise,
+      ]);
 
-    return NextResponse.json({ titleMatches, semanticMatches });
+    return NextResponse.json({
+      titleMatches,
+      semanticMatches,
+      collectionMatches,
+      tagMatches,
+    });
   } catch (err) {
     if (err instanceof ForbiddenError) {
       return NextResponse.json({ error: err.message }, { status: 403 });
