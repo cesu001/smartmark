@@ -1,20 +1,26 @@
-# Current Feature
+# Current Feature: Sidebar Avatar Initials Match Profile Format
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Sidebar avatar fallback (`AppSidebar.tsx`) shows real user initials instead of the hardcoded `"CN"` placeholder, so a brand-new account (no uploaded avatar, no GitHub image) sees the same kind of avatar in the sidebar as on the profile page.
+- Sidebar avatar image fallback stops defaulting to the external `https://github.com/shadcn.png` placeholder when there's no `userImage` — instead just show the initials fallback (matching `AvatarUploadButton`'s `src={preview ?? undefined}` behavior on the profile page).
+- Reuse the same initials logic already implemented in `dashboard/profile/page.tsx` (`getInitials(name, email)`), not a reimplementation.
 
 ## References
 
-<!-- Add references here -->
+- `src/app/dashboard/profile/page.tsx` (lines 11-19, 31) — existing `getInitials(name, email)` helper and usage.
+- `src/components/profile/AvatarUploadButton.tsx` (lines 72-75) — existing pattern: `<AvatarImage src={preview ?? undefined} /><AvatarFallback>{initials}</AvatarFallback>`.
+- `src/components/dashboard/AppSidebar.tsx` (lines 186-192) — current sidebar avatar markup to fix; `userName`/`userEmail` already fetched at lines 62/73.
 
 ## Notes
 
-<!-- Add notes here -->
+- This closes an existing TODO already logged in this file: "`AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`."
+- `getInitials` currently lives as a private function inside `profile/page.tsx` — it'll need to move somewhere shared (e.g. `src/lib/`) so both `AppSidebar.tsx` (server component) and `profile/page.tsx` can import it without duplication.
+- Scope is the sidebar avatar's fallback rendering only — no change to the avatar upload flow, profile page, or `image`/`avatarKey` DB fields.
 
 ## TODOs
 
@@ -26,7 +32,6 @@ Not Started
 - **(code scanner, low)** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
 - Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
 - **(code scanner, low)** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
-- **(code scanner, low)** `AppSidebar.tsx` hardcodes `<AvatarFallback>CN</AvatarFallback>` instead of reusing the `getInitials(name, email)` helper already in `dashboard/profile/page.tsx`.
 - **(code scanner, low)** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
 - **(code scanner, low)** `src/components/dashboard/ＭodeToggle.tsx` uses a fullwidth Unicode "Ｍ" in the filename instead of ASCII "M" — rename to `ModeToggle.tsx` and update the import in `AppNavbar.tsx`.
 - **(code scanner, low)** `workbench/page.tsx` tab serialization (`${id}_${encodeURIComponent(title)}` split on `_`) truncates note titles containing underscores when parsing back out. Fix: use a delimiter unaffected by `encodeURIComponent`, or parse with `indexOf`/`slice` instead of `split` destructuring.

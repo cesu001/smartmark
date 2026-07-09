@@ -1,3 +1,13 @@
+export function getInitials(name?: string | null, email?: string | null): string {
+  if (name?.trim()) {
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  }
+  return (email?.[0] ?? "U").toUpperCase();
+}
+
 export const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
 export const AVATAR_MIME_BY_EXTENSION: Record<string, string> = {

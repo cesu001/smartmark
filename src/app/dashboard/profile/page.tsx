@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth-utils";
 import { getUserProfile, getUserStats } from "@/lib/db/users";
+import { getInitials } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import DeleteAccountButton from "@/components/profile/DeleteAccountButton";
@@ -7,16 +8,6 @@ import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
 import EditableName from "@/components/profile/EditableName";
 import AvatarUploadButton from "@/components/profile/AvatarUploadButton";
 import { CalendarDays, FileText, FolderOpen, Heart, Tag } from "lucide-react";
-
-function getInitials(name?: string | null, email?: string | null): string {
-  if (name?.trim()) {
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
-  }
-  return (email?.[0] ?? "U").toUpperCase();
-}
 
 export default async function ProfilePage() {
   const sessionUser = await requireUser();

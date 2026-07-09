@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -72,6 +73,7 @@ const AppSidebar = async () => {
 
   const userName = dbUser?.name;
   const userImage = dbUser?.image;
+  const userInitials = getInitials(userName, userEmail);
   const favoriteCollections = collections.filter((c) => c.isFavorite).length;
   const favoriteTags = tags.filter((t) => t.isFavorite).length;
   const counts: Record<string, number> = {
@@ -184,12 +186,8 @@ const AppSidebar = async () => {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
                   <Avatar>
-                    <AvatarImage
-                      src={
-                        userImage ? userImage : "https://github.com/shadcn.png"
-                      }
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
+                    <AvatarImage src={userImage ?? undefined} />
+                    <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                     <span className="font-medium whitespace-nowrap">
