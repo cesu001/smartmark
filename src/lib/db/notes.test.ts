@@ -270,4 +270,21 @@ describe("searchNotesByEmbedding", () => {
       },
     ]);
   });
+
+  it("passes the truncated content excerpt through from the raw row", async () => {
+    const updatedAt = new Date("2026-07-08T10:00:00.000Z");
+    mockedPrisma.$queryRaw.mockResolvedValue([
+      {
+        id: "note-1",
+        title: "Vectors",
+        updatedAt,
+        similarity: 0.91,
+        excerpt: "Vectors are used for semantic search.",
+      },
+    ] as never);
+
+    const results = await searchNotesByEmbedding("user-1", [0.1, 0.2, 0.3]);
+
+    expect(results[0].excerpt).toBe("Vectors are used for semantic search.");
+  });
 });

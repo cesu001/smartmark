@@ -1,6 +1,7 @@
 import { SidebarTrigger } from "../ui/sidebar";
 import { ModeToggle } from "./ＭodeToggle";
 import SearchBar from "./SearchBar";
+import ChatSheet from "./ChatSheet";
 
 const AppNavbar = () => {
   return (
@@ -9,6 +10,7 @@ const AppNavbar = () => {
       <div className="flex-1 flex justify-center">
         <SearchBar />
       </div>
+      <ChatSheet />
       <ModeToggle />
     </nav>
   );

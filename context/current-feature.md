@@ -1,20 +1,34 @@
-# Current Feature
+# Current Feature: AI Chatbot
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add an AI Chatbot panel to the right sidebar (per `project-overview.md`'s layout spec) that lets the user ask questions about their notes
+- New route `src/app/api/dashboard/chat/route.ts`: `requireUserId()` → `requireProUser()` → `applyRateLimit(aiChatLimiter, userId)`, then `streamText()` with `CHAT_MODEL`, streamed back via `createUIMessageStreamResponse`/`toUIMessageStream`, with `export const maxDuration = 30;`
+- RAG grounding: embed the user's latest message, call `searchNotesByEmbedding` (from AI RAG Search), inject top matches into the `system` prompt as delimited context (title + short excerpt only, capped to top 3-5 matches — not full note bodies)
+- Frontend chatbot UI in the right sidebar using `useChat` from `@ai-sdk/react` + `TextStreamChatTransport` — message list, input box, streaming indicator, sonner toast on error
 
 ## References
 
-<!-- Add references here -->
+- `context/features/ai-chatbot-spec.md` (full spec)
+- Depends on AI Setup (`requireProUser`, rate limiters, `src/lib/ai/client.ts`) — already landed
+- Should reuse `searchNotesByEmbedding` from AI RAG Search (already landed) rather than duplicating retrieval logic
+- Full rationale: `docs/ai-integration-plan.md` §6, §9, §10
 
 ## Notes
 
-<!-- Add notes here -->
+- Retrieved note content injected into the system prompt is user-authored — must be treated as data, not instructions, same prompt-injection guard used in the Summarizing feature (`src/lib/ai/summarize.ts`)
+- Never expose `OPENAI_API_KEY` client-side; all calls happen server-side in the route handler
+- Both dependencies (AI Setup, AI RAG Search) are already merged, so this can ship with full RAG grounding from the start — no need for the spec's "ship without grounding" fallback path
+- **"Right sidebar" deviation:** no such sidebar frame exists anywhere in the built app (semantic search ended up in the navbar instead of the spec's original right-sidebar plan too). Implemented as `ChatSheet` — a `MessageCircle` icon in `AppNavbar` that opens a right-side shadcn `Sheet` containing `ChatPanel` — so it's reachable from every dashboard page without inventing new layout infrastructure.
+- **`TextStreamChatTransport` deviation:** the spec paired `TextStreamChatTransport` (client) with `createUIMessageStreamResponse`/`toUIMessageStream` (server), but these are two different, incompatible AI SDK streaming protocols — verified via Context7 against the installed `ai`/`@ai-sdk/react` versions. Kept the richer server protocol (as literally specified) and used `useChat`'s default `DefaultChatTransport` on the client instead, since that's the transport that actually pairs with it.
+- **App-usage Q&A (added mid-build, user-requested):** the chatbot now also answers "how do I do X" questions about SmartMark itself, not just questions grounded in note content. `src/lib/ai/chat.ts`'s `APP_USAGE_CONTEXT` is a static block of actually-shipped-feature knowledge baked into the system prompt alongside the per-message `<notes>` RAG context — keep it in sync with real feature work.
+- **Grounding needs excerpts, not just titles:** extended `NoteSearchResult`/`searchNotesByEmbedding` (`src/lib/db/notes.ts`) with a `LEFT(content, 300)` excerpt field, reusing rather than duplicating the RAG Search retrieval function per this spec's explicit instruction. The search dropdown UI simply ignores the extra field.
+- **Prompt-injection hardening (found during `/feature review`):** note titles/excerpts are free-text and user-controlled; embedding them unescaped into `<note title="...">...</note>` let a crafted title (containing `"` or `</note>`) break out of the delimiter the injection guard depends on. Fixed with `escapeForPrompt()` in `chat.ts`. Real-world impact is low (matches are `userId`-scoped, so a user can only affect their own chat session — closer to self-XSS than a cross-user vuln) but worth the fix given how much this codebase already cares about the delimited-data pattern.
+- **Input validation (found during `/feature review`):** the route originally trusted the request body's `{ messages }` shape with no validation, unlike every sibling AI route which uses Zod. Fixed using the AI SDK's own `safeValidateUIMessages()` instead of a hand-rolled Zod schema — more idiomatic for `UIMessage`'s parts/tool-call union shape.
 
 ## TODOs
 

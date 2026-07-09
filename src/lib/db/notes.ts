@@ -280,6 +280,7 @@ export interface NoteSearchResult {
   title: string;
   updatedAt: string;
   similarity?: number;
+  excerpt?: string;
 }
 
 /**
@@ -304,6 +305,12 @@ export async function searchNotesByTitle(
   }));
 }
 
+// How much of a matched note's content to surface as context (e.g. for AI
+// chat grounding). Short enough to keep several matches within a reasonable
+// prompt budget — callers that don't need it (e.g. the search dropdown)
+// simply ignore the field.
+const EXCERPT_CHARS = 300;
+
 /**
  * Semantic nearest-neighbour search over note embeddings using pgvector's
  * `<=>` cosine-distance operator (matching the HNSW `vector_cosine_ops` index).
@@ -317,10 +324,17 @@ export async function searchNotesByEmbedding(
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
 
   const rows = await prisma.$queryRaw<
-    { id: string; title: string; updatedAt: Date; similarity: number }[]
+    {
+      id: string;
+      title: string;
+      updatedAt: Date;
+      similarity: number;
+      excerpt: string;
+    }[]
   >`
     SELECT id, title, "updatedAt",
-           1 - (embedding <=> ${vectorLiteral}::vector) AS similarity
+           1 - (embedding <=> ${vectorLiteral}::vector) AS similarity,
+           LEFT(COALESCE(content, ''), ${EXCERPT_CHARS}) AS excerpt
     FROM "Note"
     WHERE "userId" = ${userId} AND embedding IS NOT NULL
     ORDER BY embedding <=> ${vectorLiteral}::vector
@@ -332,5 +346,6 @@ export async function searchNotesByEmbedding(
     title: r.title,
     updatedAt: r.updatedAt.toISOString(),
     similarity: Number(r.similarity),
+    excerpt: r.excerpt,
   }));
 }
