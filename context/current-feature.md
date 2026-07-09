@@ -1,20 +1,29 @@
-# Current Feature
+# Current Feature: Wire Up Dashboard Plus Icons (Add Note / Add Collection)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Clicking any Plus icon in the main `/dashboard` page's Recent Notes widget creates a new blank note (mirrors `AddNoteCard` on the all-notes page: `POST /api/dashboard/note`, then open it in the workbench, in edit mode).
+- Clicking any Plus icon in the main `/dashboard` page's Recent Collections widget creates a new collection (mirrors `SidebarAddCollection`'s inline-form pattern, or a simpler prompt/dialog if that's a better fit for a card-shaped CTA — decide during implementation).
+- Both empty-state and non-empty-state Plus tiles become functional (currently 4 inert instances total: 2 in `AppRecentNotes.tsx`, 2 in `AppRecentCollections.tsx`).
+- The grid-cell Plus tile's height must visually match the height of the `AppNoteCard`/`AppColCard` it sits beside in the same grid row (currently `AppRecentNotes`'s tile is `min-h-28` and `AppRecentCollections`'s tile has no explicit height — both need to match their sibling card's actual rendered height, not just look approximately similar).
 
 ## References
 
-<!-- Add references here -->
+- `src/components/dashboard/AppRecentNotes.tsx` (lines 9-17 empty-state Plus, lines 20-23 grid-cell Plus) — both currently just `<Plus>` icons with no `onClick`, no `"use client"`.
+- `src/components/dashboard/AppRecentCollections.tsx` (lines 9-17 empty-state Plus, lines 20-23 grid-cell Plus) — same issue.
+- `src/components/dashboard/AddNoteCard.tsx` (allnotes page) — existing working pattern for "click to create note, open in workbench edit mode".
+- `src/components/dashboard/SidebarAddCollection.tsx` — existing working pattern for inline collection-creation form + `POST /api/dashboard/collection`.
 
 ## Notes
 
-<!-- Add notes here -->
+- Both `AppRecentNotes` and `AppRecentCollections` are currently async Server Components — making the Plus icons functional requires extracting a small client component (or converting the Plus tile itself into one), similar to how `AddNoteCard` is a standalone client component reused inside an otherwise server-rendered grid.
+- Should reuse existing API routes (`POST /api/dashboard/note`, `POST /api/dashboard/collection`) — no new backend needed.
+- Confirm with user whether "Add Collection" from the dashboard card should reuse the sidebar's inline-input pattern or use a simple `Dialog`/prompt, since a grid card has different affordances than a sidebar row.
+- Height parity with `AppNoteCard`/`AppColCard` needs a real fix (e.g. match via `h-full` in a grid row with implicit equal-height grid cells, or match `Card`'s actual class stack), not an eyeballed `min-h` guess.
 
 ## TODOs
 
@@ -31,6 +40,7 @@ Not Started
 - **(code scanner, low)** `src/components/dashboard/ＭodeToggle.tsx` uses a fullwidth Unicode "Ｍ" in the filename instead of ASCII "M" — rename to `ModeToggle.tsx` and update the import in `AppNavbar.tsx`.
 - **(code scanner, low)** `workbench/page.tsx` tab serialization (`${id}_${encodeURIComponent(title)}` split on `_`) truncates note titles containing underscores when parsing back out. Fix: use a delimiter unaffected by `encodeURIComponent`, or parse with `indexOf`/`slice` instead of `split` destructuring.
 - **(code scanner, low, refactor)** `SidebarAddCollection.tsx` and `SidebarAddTag.tsx` are ~95% duplicated — extract a shared `SidebarInlineAddForm` component or `useInlineCreate` hook.
+- **(feature review, low, refactor)** `AddNoteTile.tsx`/`AddCollectionTile.tsx` (dashboard Plus tiles) duplicate the create-and-navigate logic already in `AddNoteCard.tsx` and the inline-form logic in `SidebarAddCollection.tsx` — same class of duplication as the `SidebarAddCollection`/`SidebarAddTag` TODO above. Worth a shared `useCreateNote()`/`useInlineCreate()` hook if a fourth call site ever appears.
 - **(code scanner, low, refactor)** `NoteDrawer.tsx` (400 lines) mixes Tiptap setup, meta fetching, and debounced autosave in one file — extract a `useAutoSaveNote` hook and a `NoteMetaBar` subcomponent.
 - **(code scanner, low, performance)** `NoteTag` model in `prisma/schema.prisma` only has a composite `@@id([noteId, tagId])`; add `@@index([tagId])` for efficient reverse tag→note lookups.
 - **(low, cleanup)** `src/components/dashboard/EntityActionsMenu.tsx` — `const label = type === "collection" ? "collection" : "tag"` is redundant since `label` always equals `type`; simplify to use `type` directly.
