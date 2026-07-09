@@ -1,23 +1,28 @@
-# Current Feature
+# Current Feature: Quick Fix 02 — New Accounts Default to Pro
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- New accounts are created with `isPro = true` instead of the current default `false`.
+- No pay-to-unlock/paywall function exists yet, so there's no reason to gate AI features behind payment right now.
+- Leave a TODO to build the PayPal payment feature later (which will presumably reintroduce a real free/pro distinction on registration).
 
 ## References
 
-<!-- Add references here -->
+- `context/features/quick-fix02.md`
 
 ## Notes
 
-<!-- Add notes here -->
+- Likely touches `POST /api/auth/register` (and/or the underlying user-creation logic in `src/lib/db/users.ts` if a create-user helper exists there) and possibly the Prisma `User.isPro` default in `prisma/schema.prisma`.
+- Check whether GitHub OAuth signups (via `PrismaAdapter`) also need `isPro: true` — OAuth-created users don't go through the credentials register route, so the adapter's default user creation path may need attention too (e.g. schema-level default vs. an `events.createUser` callback in NextAuth).
+- Existing demo user was manually flipped to `isPro = true` in a prior session (2026-07-08, AI RAG Search work) — unrelated to this fix but confirms `isPro` is already wired through and tested for gating Pro features.
 
 ## TODOs
 
+- Build the PayPal payment/paywall feature, then revert `User.isPro` in `prisma/schema.prisma` to `@default(false)` and gate the Pro tier behind actual payment again (see `context/features/quick-fix02.md`).
 - `src/app/api/auth/forgot-password/route.ts` — email `to` field is hardcoded to `cesu001@gmail.com` (Resend free-tier restriction); change to `foundedUser.email` once a verified sending domain is set up
 - Auto-save does not flush before tab close/switch — if the user types and closes or switches tabs within 1 second, those changes are lost. Root cause is broader than `handleCloseTab`: `NoteDrawer.tsx`'s own note-load effect cleanup unconditionally `clearTimeout`s the pending debounce on every `noteId` change (close **or** switch). Fix: in that cleanup, flush (call `doAutoSaveRef.current()`) instead of just clearing, so it covers both triggers from a single change in `NoteDrawer.tsx`.
 - **(code scanner, medium)** `NoteDrawer.tsx` note-load `useEffect` (~lines 188-231) has no stale-fetch guard — if a user switches tabs quickly (note A → note B) and fetch A resolves after fetch B, note A's title/content/pin/favorite/tags silently overwrite the UI even though note B is displayed. Fix: track an `ignore` flag set in the effect cleanup and skip `setState` calls when it's true.

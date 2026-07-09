@@ -55,7 +55,8 @@ model User {
   image         String?
   avatarKey     String?
   password      String?
-  isPro         Boolean      @default(false)
+  // TODO: default to false once PayPal payment/paywall is built and Pro becomes an actual paid tier
+  isPro         Boolean      @default(true)
 
   accounts      Account[]
   sessions      Session[]
