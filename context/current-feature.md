@@ -1,20 +1,29 @@
-# Current Feature
+# Current Feature: Homepage
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Rebuild every section of `prototypes/homepage/` as real React components (server components by default; client only where interactivity/animation requires it), not a copy-pasted HTML string.
+- Use Tailwind CSS v4 + shadcn/ui, matching `context/coding-standards.md` — no hand-rolled CSS file like the prototype's `styles.css`.
+- All buttons and links route to real destinations (`/login`, `/register`, `/dashboard` when session exists, in-page anchors) — no `#` placeholders.
+- Preserve the existing logged-in-aware behavior currently in `src/app/page.tsx` (session check → different CTAs).
+- Keep code DRY: data-driven `.map()` for feature cards/pricing lists/footer columns, one shared `ScrollReveal` wrapper instead of repeated `IntersectionObserver` logic.
 
 ## References
 
-<!-- Add references here -->
+- `context/features/homepage-spec.md` — full spec (component breakdown, routing table, styling/DRY requirements)
+- `prototypes/homepage/` (`index.html`, `styles.css`, `script.js`) — visual/content reference to convert
+- `context/features/homepage-mockup-spec.md` — original design brief behind the prototype
 
 ## Notes
 
-<!-- Add notes here -->
+- Component split: `HomeNavbar` (client — scroll + mobile menu), `ChaosOrderVisual`/`ChaosBox` (client — rAF animation), `HomePricing` (client — billing toggle), `ScrollReveal` (client — IntersectionObserver wrapper); `HomeHero`, `HomeFeatures`, `HomeAiSection`, `HomeCta`, `HomeFooter`, and `page.tsx` stay server components.
+- AI Summary demo panel in the AI Section is decorative only — do not wire to the real summarize endpoint.
+- Footer links to nonexistent pages (About/Blog/Contact/Changelog/Privacy/Terms) should be omitted or visibly disabled, not linked to `#`.
+- Out of scope: `/login`, `/register`, dashboard routes, and `prototypes/homepage/` itself (left untouched as reference).
 
 ## TODOs
 
