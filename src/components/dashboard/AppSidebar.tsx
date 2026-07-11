@@ -87,7 +87,12 @@ const AppSidebar = async () => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <span>Smark</span>
+              <Link href="/dashboard" className="flex items-center gap-2.5">
+                <span className="flex size-7.5 items-center justify-center rounded-sm bg-primary font-extrabold text-primary-foreground">
+                  S
+                </span>
+                <span className="font-bold">Smark</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
