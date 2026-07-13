@@ -5,6 +5,7 @@ import { applyRateLimit, aiSearchLimiter } from "@/lib/rate-limit";
 import { embedText } from "@/lib/ai/embeddings";
 import {
   searchNotesByTitle,
+  searchNotesByContent,
   searchNotesByEmbedding,
 } from "@/lib/db/notes";
 import { searchCollectionsByTitle } from "@/lib/db/collections";
@@ -20,17 +21,23 @@ const SIMILARITY_THRESHOLD = 0.35;
 
 const searchSchema = z.object({
   query: z.string().min(1).max(500),
+  // "normal" = plain DB matching (title, content, collections, tags), no AI.
+  // "semantic" = embedding nearest-neighbour search (Pro-gated).
+  mode: z.enum(["normal", "semantic"]).default("normal"),
 });
+
+const EMPTY_RESPONSE = {
+  titleMatches: [],
+  contentMatches: [],
+  semanticMatches: [],
+  collectionMatches: [],
+  tagMatches: [],
+};
 
 export async function POST(request: Request) {
   const userId = await requireUserId();
 
   try {
-    await requireProUser(userId);
-
-    const limited = await applyRateLimit(aiSearchLimiter, userId);
-    if (limited) return limited;
-
     const body = await request.json();
     const parsed = searchSchema.safeParse(body);
     if (!parsed.success) {
@@ -38,46 +45,53 @@ export async function POST(request: Request) {
     }
 
     const query = parsed.data.query.trim();
-    if (!query) {
-      return NextResponse.json({
-        titleMatches: [],
-        semanticMatches: [],
-        collectionMatches: [],
-        tagMatches: [],
-      });
+    const mode = parsed.data.mode;
+
+    // Semantic search is the only AI-backed path, so it's the only one behind
+    // the Pro gate. Normal (title/content/collection/tag) search is plain DB
+    // matching and available to every signed-in user.
+    if (mode === "semantic") {
+      await requireProUser(userId);
     }
 
-    // Title matches never touch OpenAI, so they must survive an embedding
-    // failure (quota, outage). Run the semantic half in its own try/catch and
-    // degrade to an empty list rather than failing the whole request.
-    const titleMatchesPromise = searchNotesByTitle(userId, query);
-    const semanticPromise = (async () => {
+    const limited = await applyRateLimit(aiSearchLimiter, userId);
+    if (limited) return limited;
+
+    if (!query) {
+      return NextResponse.json(EMPTY_RESPONSE);
+    }
+
+    if (mode === "semantic") {
+      // Semantic embedding can fail (quota, outage); degrade to an empty list
+      // rather than 500ing the request.
+      let semanticMatches: Awaited<ReturnType<typeof searchNotesByEmbedding>> = [];
       try {
         const queryEmbedding = await embedText(query);
         const matches = await searchNotesByEmbedding(userId, queryEmbedding);
-        return matches.filter(
+        semanticMatches = matches.filter(
           (n) => (n.similarity ?? 0) >= SIMILARITY_THRESHOLD,
         );
       } catch (err) {
-        console.error("Semantic half of search failed (returning title matches only):", err);
-        return [];
+        console.error("Semantic search failed (returning no matches):", err);
       }
-    })();
-    // Collections and tags only ever get title matching, no semantic search.
-    const collectionMatchesPromise = searchCollectionsByTitle(userId, query);
-    const tagMatchesPromise = searchTagsByTitle(userId, query);
+      return NextResponse.json({ ...EMPTY_RESPONSE, semanticMatches });
+    }
 
-    const [titleMatches, semanticMatches, collectionMatches, tagMatches] =
+    // Normal mode: title, content, collections, tags — all plain DB queries.
+    // Each section matches independently, so a note matching both its title and
+    // its content intentionally appears in both Title Matches and Content Matches.
+    const [titleMatches, contentMatches, collectionMatches, tagMatches] =
       await Promise.all([
-        titleMatchesPromise,
-        semanticPromise,
-        collectionMatchesPromise,
-        tagMatchesPromise,
+        searchNotesByTitle(userId, query),
+        searchNotesByContent(userId, query),
+        searchCollectionsByTitle(userId, query),
+        searchTagsByTitle(userId, query),
       ]);
 
     return NextResponse.json({
+      ...EMPTY_RESPONSE,
       titleMatches,
-      semanticMatches,
+      contentMatches,
       collectionMatches,
       tagMatches,
     });
@@ -85,7 +99,7 @@ export async function POST(request: Request) {
     if (err instanceof ForbiddenError) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error("Semantic search failed:", err);
+    console.error("Search failed:", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

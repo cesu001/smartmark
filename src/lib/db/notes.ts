@@ -320,6 +320,28 @@ export async function searchNotesByTitle(
   }));
 }
 
+/**
+ * Case-insensitive content substring match, for "normal" (non-semantic) search.
+ * Mirrors `searchNotesByTitle` but matches on the note body. Scoped by `userId`.
+ */
+export async function searchNotesByContent(
+  userId: string,
+  query: string,
+  limit = 10,
+): Promise<NoteSearchResult[]> {
+  const notes = await prisma.note.findMany({
+    where: { userId, content: { contains: query, mode: "insensitive" } },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: { id: true, title: true, updatedAt: true },
+  });
+  return notes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    updatedAt: n.updatedAt.toISOString(),
+  }));
+}
+
 // Default excerpt length for a matched note's content. The search dropdown
 // ignores the excerpt field entirely, so this small default keeps that response
 // lean; the AI chat route overrides it with a much larger value so grounding
