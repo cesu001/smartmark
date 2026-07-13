@@ -14,6 +14,7 @@ import {
   extractLastUserText,
   buildGroundedSystemPrompt,
   MAX_CONTEXT_NOTES,
+  GROUNDING_EXCERPT_CHARS,
 } from "@/lib/ai/chat";
 
 export const maxDuration = 30;
@@ -53,7 +54,12 @@ export async function POST(request: Request) {
       // the assistant from replying, just from citing the user's notes.
       try {
         const queryEmbedding = await embedText(queryText);
-        const matches = await searchNotesByEmbedding(userId, queryEmbedding, MAX_CONTEXT_NOTES);
+        const matches = await searchNotesByEmbedding(
+          userId,
+          queryEmbedding,
+          MAX_CONTEXT_NOTES,
+          GROUNDING_EXCERPT_CHARS,
+        );
         system = buildGroundedSystemPrompt(matches);
       } catch (err) {
         console.error("Chat grounding failed (continuing without note context):", err);

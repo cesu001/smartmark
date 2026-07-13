@@ -6,6 +6,13 @@ import type { NoteSearchResult } from "@/lib/db/notes";
 export const CHAT_SIMILARITY_THRESHOLD = 0.35;
 export const MAX_CONTEXT_NOTES = 5;
 
+// Per-note content the chatbot receives as grounding. Far larger than the
+// search dropdown's default excerpt so the model sees (nearly) the whole note,
+// including anything the user appended after the opening lines — otherwise it
+// only "knows" the start of each note. 5 notes x 4000 chars stays well within
+// the chat model's context budget.
+export const GROUNDING_EXCERPT_CHARS = 4000;
+
 // Static product knowledge so the assistant can also answer "how do I do X"
 // questions about the app itself, not just questions grounded in note content.
 // Kept to actually-shipped features/UI — update this alongside real feature work.

@@ -320,10 +320,10 @@ export async function searchNotesByTitle(
   }));
 }
 
-// How much of a matched note's content to surface as context (e.g. for AI
-// chat grounding). Short enough to keep several matches within a reasonable
-// prompt budget — callers that don't need it (e.g. the search dropdown)
-// simply ignore the field.
+// Default excerpt length for a matched note's content. The search dropdown
+// ignores the excerpt field entirely, so this small default keeps that response
+// lean; the AI chat route overrides it with a much larger value so grounding
+// sees (nearly) the whole note, not just its opening lines.
 const EXCERPT_CHARS = 300;
 
 /**
@@ -335,6 +335,7 @@ export async function searchNotesByEmbedding(
   userId: string,
   queryEmbedding: number[],
   limit = 10,
+  excerptChars = EXCERPT_CHARS,
 ): Promise<NoteSearchResult[]> {
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
 
@@ -349,7 +350,7 @@ export async function searchNotesByEmbedding(
   >`
     SELECT id, title, "updatedAt",
            1 - (embedding <=> ${vectorLiteral}::vector) AS similarity,
-           LEFT(COALESCE(content, ''), ${EXCERPT_CHARS}) AS excerpt
+           LEFT(COALESCE(content, ''), ${excerptChars}) AS excerpt
     FROM "Note"
     WHERE "userId" = ${userId} AND embedding IS NOT NULL
     ORDER BY embedding <=> ${vectorLiteral}::vector
