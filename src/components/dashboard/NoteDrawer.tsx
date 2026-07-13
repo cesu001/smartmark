@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,13 +120,16 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryPopoverOpen, setSummaryPopoverOpen] = useState(false);
+  const [isNoteLoading, setIsNoteLoading] = useState(true);
 
   const isLoaded = useRef(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Always-current save function — avoids stale closures inside setTimeout
-  const doAutoSaveRef = useRef<() => Promise<boolean>>(async () => false);
+  // Always-current save function — avoids stale closures inside setTimeout.
+  // `silent` persists without touching UI state (used when flushing on leave,
+  // where this component instance is about to display a different note).
+  const doAutoSaveRef = useRef<(silent?: boolean) => Promise<boolean>>(async () => false);
   // Stable ref so the editor's onUpdate (captured once at creation) always calls the latest scheduler
   const scheduleAutoSaveRef = useRef<() => void>(() => {});
   // Tracks last-persisted collection/tags so autosave only refreshes the sidebar when they actually change
@@ -145,7 +149,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     },
     onCreate({ editor }) {
       if (pendingContent.current !== null) {
-        editor.commands.setContent(pendingContent.current);
+        // emitUpdate:false — this is a programmatic load, not a user edit, so it
+        // must not schedule an autosave (Tiptap v3 emits updates by default).
+        editor.commands.setContent(pendingContent.current, { emitUpdate: false });
         pendingContent.current = null;
       }
     },
@@ -158,7 +164,13 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   scheduleAutoSaveRef.current = () => {
     if (!isLoaded.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => doAutoSaveRef.current(), 1000);
+    autoSaveTimerRef.current = setTimeout(() => {
+      // Null the ref once the debounce fires so it accurately reflects "a save
+      // is still pending" — the cleanup flush relies on this to avoid redundant
+      // writes after a save has already gone out.
+      autoSaveTimerRef.current = null;
+      doAutoSaveRef.current();
+    }, 1000);
   };
 
   // Sync edit mode → editor editable state
@@ -166,23 +178,11 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     editor?.setEditable(isEditMode);
   }, [editor, isEditMode]);
 
-  // Load collections and tags once on mount
-  useEffect(() => {
-    async function loadMeta() {
-      const [colRes, tagRes] = await Promise.all([
-        fetch("/api/dashboard/collection"),
-        fetch("/api/dashboard/tag"),
-      ]);
-      if (colRes.ok) setCollections(await colRes.json());
-      if (tagRes.ok) setTags(await tagRes.json());
-    }
-    loadMeta();
-  }, []);
-
   const setEditorContent = useCallback(
     (content: string) => {
       if (editor) {
-        editor.commands.setContent(content);
+        // emitUpdate:false — programmatic load, must not schedule an autosave.
+        editor.commands.setContent(content, { emitUpdate: false });
       } else {
         pendingContent.current = content;
       }
@@ -190,10 +190,17 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     [editor],
   );
 
-  // Load note data when noteId changes
+  // Load note data (plus the user's collections + tags) when noteId changes
   useEffect(() => {
+    // Guards against a stale fetch: if the user switches notes before this
+    // request resolves, the cleanup sets `ignore` so the late response can't
+    // overwrite the newer note's state.
+    let ignore = false;
     isLoaded.current = false;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     setIsEditMode(startInEditMode ?? false);
     setTitle("Untitled Note");
     setCollectionId("");
@@ -207,14 +214,24 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     setSummary(null);
     setSummaryPopoverOpen(false);
     setIsSummarizing(false);
+    setIsNoteLoading(true);
 
     async function loadNote() {
       const res = await fetch(`/api/dashboard/note/${noteId}`);
+      if (ignore) return;
       if (!res.ok) {
         toast.error("Failed to load note");
+        setIsNoteLoading(false);
         return;
       }
-      const note: NoteData = await res.json();
+      const { note, collections, tags }: {
+        note: NoteData;
+        collections: SimpleCollection[];
+        tags: SimpleTag[];
+      } = await res.json();
+      if (ignore) return;
+      setCollections(collections);
+      setTags(tags);
       setTitle(note.title);
       setCollectionId(note.collectionId ?? "");
       setSelectedTagIds(note.tags.map((t) => t.id));
@@ -228,11 +245,20 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         tagIds: [...note.tags.map((t) => t.id)].sort().join(","),
       };
       isLoaded.current = true;
+      setIsNoteLoading(false);
     }
     loadNote();
 
     return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      ignore = true;
+      if (autoSaveTimerRef.current) {
+        // A debounced autosave was still pending when the user closed/switched
+        // this note. Flush it (silently) instead of dropping it, so edits made
+        // within the last second before leaving aren't lost.
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+        doAutoSaveRef.current(true);
+      }
       if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
     };
   // startInEditMode intentionally omitted: only consumed on noteId change
@@ -241,10 +267,10 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
 
   // Keep doAutoSaveRef current whenever relevant state changes
   useEffect(() => {
-    doAutoSaveRef.current = async () => {
+    doAutoSaveRef.current = async (silent = false) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
-      setSaveStatus("saving");
+      if (!silent) setSaveStatus("saving");
       try {
         const res = await fetch(`/api/dashboard/note/${noteId}`, {
           method: "PUT",
@@ -253,18 +279,23 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         });
         if (!res.ok) throw new Error();
         const data: { id: string; collectionId: string } = await res.json();
-        // Server may have assigned a Draft collection — sync it to UI
-        if (data.collectionId && !collectionId) {
-          setCollectionId(data.collectionId);
-          fetch("/api/dashboard/collection")
-            .then((r) => { if (r.ok) r.json().then(setCollections); })
-            .catch(() => null);
+        // The UI updates below would land on whatever note is now displayed, so
+        // skip them when flushing on leave — only the DB write and the sidebar
+        // refresh (which are note-agnostic) should run in that case.
+        if (!silent) {
+          // Server may have assigned a Draft collection — sync it to UI
+          if (data.collectionId && !collectionId) {
+            setCollectionId(data.collectionId);
+            fetch("/api/dashboard/collection")
+              .then((r) => { if (r.ok) r.json().then(setCollections); })
+              .catch(() => null);
+          }
+          setUpdatedAt(new Date().toISOString());
+          setSaveStatus("saved");
+          if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
+          savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+          onTitleSaved?.(title);
         }
-        setUpdatedAt(new Date().toISOString());
-        setSaveStatus("saved");
-        if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
-        savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
-        onTitleSaved?.(title);
 
         // Only refresh the sidebar (collection/tag counts) when the note's collection or tags actually changed
         const nextTagIds = [...selectedTagIds].sort().join(",");
@@ -274,14 +305,17 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         }
         return true;
       } catch {
-        setSaveStatus("idle");
+        if (!silent) setSaveStatus("idle");
         return false;
       }
     };
   }, [noteId, title, collectionId, selectedTagIds, editor, onTitleSaved, router]);
 
   async function handleSubmit() {
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     setIsSubmitting(true);
     const ok = await doAutoSaveRef.current();
     setIsSubmitting(false);
@@ -451,7 +485,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
             </Button>
           </div>
           <div className="flex-1 min-w-0">
-            {isEditMode ? (
+            {isNoteLoading ? (
+              <Skeleton className="h-5 w-40" />
+            ) : isEditMode ? (
               <Input
                 value={title}
                 onChange={(e) => {
@@ -670,7 +706,18 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
 
       {/* Editor */}
       <div className="flex-1 overflow-auto">
-        <EditorContent editor={editor} />
+        {isNoteLoading && (
+          <div className="px-6 py-4 space-y-3" aria-hidden>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-11/12" />
+          </div>
+        )}
+        <div className={cn(isNoteLoading && "hidden")}>
+          <EditorContent editor={editor} />
+        </div>
       </div>
     </div>
 
