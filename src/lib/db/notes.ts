@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { Note } from "@/types/dashboard";
 import {
@@ -9,14 +10,28 @@ import { verifyTagsOwnership } from "./tags";
 import { embedNoteContent } from "@/lib/ai/embeddings";
 
 /**
- * Fire-and-forget embedding refresh. An embedding failure (OpenAI down, quota,
- * etc.) must never block the note save — same pattern as R2 cleanup not blocking
- * account deletion in `deleteUser`.
+ * Refresh a note's embedding without blocking the save. An embedding failure
+ * (OpenAI down, quota, etc.) must never fail the note write — same spirit as R2
+ * cleanup not blocking account deletion in `deleteUser`.
+ *
+ * Scheduled via Next's `after()` so the work runs *after* the response is sent
+ * but is still awaited by the runtime — a bare `void embedNoteContent(...)` gets
+ * dropped on serverless (Vercel), where the function is frozen the moment it
+ * responds, so the embedding UPDATE never lands. `after()` throws when there's
+ * no request scope (unit tests, one-off scripts, cron), so fall back to running
+ * inline in that case.
  */
 function refreshNoteEmbedding(noteId: string, content: string): void {
-  void embedNoteContent(noteId, content).catch((err) => {
-    console.error(`Failed to embed note ${noteId}:`, err);
-  });
+  const run = () =>
+    embedNoteContent(noteId, content).catch((err) => {
+      console.error(`Failed to embed note ${noteId}:`, err);
+    });
+
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
 }
 
 const noteTagInclude = {
