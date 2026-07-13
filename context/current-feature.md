@@ -1,25 +1,20 @@
-# Current Feature: Render Markdown in AI Chatbot Replies
+# Current Feature
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- Assistant messages in `ChatPanel.tsx` render Markdown (headings, bold/italic, lists, code blocks/inline code, links, tables) instead of raw text.
-- User messages remain plain text (unchanged).
-- Rendering works correctly while the response is still streaming (partial/incomplete Markdown mid-stream shouldn't break the UI).
-- Styling matches the existing chat bubble look (compact, `text-sm`, fits `bg-muted`/`bg-primary` bubble backgrounds) and respects light/dark mode.
+<!-- Add goals here -->
 
 ## References
 
-- `src/components/dashboard/ChatPanel.tsx` — renders `part.text` as a plain `<span>` with `whitespace-pre-wrap`, no Markdown parsing.
-- `src/lib/ai/chat.ts` — system prompt doesn't currently instruct the model to use Markdown formatting.
+<!-- Add references here -->
 
 ## Notes
 
-- Decided against reusing the existing read-only Tiptap pattern (`AppNoteCard.tsx`) — too heavy to re-instantiate a ProseMirror editor per chat message and re-parse on every streamed token.
-- Will add `react-markdown` + `remark-gfm` as new dependencies (lightweight, standard for AI chat UIs, GFM support for tables/strikethrough/task lists).
+<!-- Add notes here -->
 
 ## TODOs
 
