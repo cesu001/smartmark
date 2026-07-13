@@ -1,26 +1,34 @@
-# Current Feature
+# Drawer Load Performance
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Reduce the perceived delay when first opening a note in the workbench drawer.
+- Collapse the 3 separate client fetches on drawer open (`/collection`, `/tag`, `/note/[id]`) into a single request, removing 2 round-trips.
+- Show a loading skeleton in the drawer while the note is being fetched, so the wait feels shorter instead of showing empty/placeholder UI.
+- Fix the pre-existing stale-fetch race in `NoteDrawer.tsx`'s note-load effect: guard the async fetch with an `ignore` flag set in the effect cleanup so a late-resolving fetch for a previous note can't overwrite the newer note's state (closes the "code scanner, medium" TODO).
+- Fix autosave data loss on close/switch: flush a pending debounced save in the note-load effect cleanup (silently, so it doesn't touch the next note's UI) instead of dropping it, so edits made within 1s of leaving are persisted (closes the documented flush TODO).
+- Fix the spurious autosave-on-load PUT: Tiptap v3's `setContent` emits updates by default, so the programmatic content-load scheduled a save. Pass `{ emitUpdate: false }` on the load paths (`setEditorContent` + `onCreate`) so loading a note never triggers a write/embed.
 
 ## References
 
-<!-- Add references here -->
+- `src/components/dashboard/NoteDrawer.tsx` — client drawer that fires the 3 fetches on mount/noteId change.
+- `src/app/api/dashboard/note/[id]/route.ts` — note detail endpoint (GET) to extend with collections + tags.
+- `src/lib/db/notes.ts`, `src/lib/db/collections.ts`, `src/lib/db/tags.ts` — db utilities.
 
 ## Notes
 
-<!-- Add notes here -->
+- Auth is JWT (`src/lib/auth.ts`), so there's no extra session DB lookup per request — not a contributor to the delay.
+- The "first open slow, later fast" pattern also involves Neon dev-branch compute cold start; that's a separate config concern and is out of scope for this change (production traffic keeps it warm).
+- Not doing full SSR of the note in this pass — bigger change to the tab/drawer model; consolidation + skeleton is the low-risk, high-payoff step.
+- Keep the existing separate `GET /api/dashboard/collection` + `/api/dashboard/tag` endpoints intact (used elsewhere / by autosave's Draft-collection resync in `NoteDrawer`).
 
 ## TODOs
 
 - Build the PayPal payment/paywall feature, then revert `User.isPro` in `prisma/schema.prisma` to `@default(false)` and gate the Pro tier behind actual payment again (see `context/features/quick-fix02.md`).
-- Auto-save does not flush before tab close/switch — if the user types and closes or switches tabs within 1 second, those changes are lost. Root cause is broader than `handleCloseTab`: `NoteDrawer.tsx`'s own note-load effect cleanup unconditionally `clearTimeout`s the pending debounce on every `noteId` change (close **or** switch). Fix: in that cleanup, flush (call `doAutoSaveRef.current()`) instead of just clearing, so it covers both triggers from a single change in `NoteDrawer.tsx`.
-- **(code scanner, medium)** `NoteDrawer.tsx` note-load `useEffect` (~lines 188-231) has no stale-fetch guard — if a user switches tabs quickly (note A → note B) and fetch A resolves after fetch B, note A's title/content/pin/favorite/tags silently overwrite the UI even though note B is displayed. Fix: track an `ignore` flag set in the effect cleanup and skip `setState` calls when it's true.
 - **(code scanner, low)** Delete-confirmation `AlertDialog` is duplicated near-verbatim between `NoteDrawer.tsx` and `AppNoteCard.tsx` (same `handleDelete` shape, same dialog markup/classNames, same 20-char title truncation, same toasts). Extract a shared `DeleteNoteDialog` component or `useDeleteNote(noteId)` hook and use it from both.
 - **(code scanner, low)** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
 - Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
