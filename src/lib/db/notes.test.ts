@@ -38,6 +38,7 @@ import {
   updateNote,
   deleteNote,
   searchNotesByTitle,
+  searchNotesByContent,
   searchNotesByEmbedding,
 } from "@/lib/db/notes";
 
@@ -242,6 +243,29 @@ describe("searchNotesByTitle", () => {
         where: {
           userId: "user-1",
           title: { contains: "react", mode: "insensitive" },
+        },
+      }),
+    );
+    expect(results).toEqual([
+      { id: "note-1", title: "React hooks", updatedAt: updatedAt.toISOString() },
+    ]);
+  });
+});
+
+describe("searchNotesByContent", () => {
+  it("scopes by userId with a case-insensitive contains on content and maps updatedAt to ISO", async () => {
+    const updatedAt = new Date("2026-07-08T10:00:00.000Z");
+    mockedPrisma.note.findMany.mockResolvedValue([
+      { id: "note-1", title: "React hooks", updatedAt },
+    ] as never);
+
+    const results = await searchNotesByContent("user-1", "useEffect");
+
+    expect(mockedPrisma.note.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user-1",
+          content: { contains: "useEffect", mode: "insensitive" },
         },
       }),
     );
