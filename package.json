@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:db": "npx tsx scripts/test-db-connection.ts",
     "test:seed": "npx tsx scripts/test-db-seedFetch.ts",
+    "backfill:embeddings": "npx tsx scripts/backfill-embeddings.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
