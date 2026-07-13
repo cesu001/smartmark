@@ -5,6 +5,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { toast } from "sonner";
 import { Send, Sparkles } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,16 +60,25 @@ const ChatPanel = () => {
             <div
               key={message.id}
               className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                 message.role === "user"
-                  ? "self-end bg-primary text-primary-foreground"
+                  ? "self-end whitespace-pre-wrap bg-primary text-primary-foreground"
                   : "self-start bg-muted text-foreground",
               )}
             >
               {message.parts.map((part, i) =>
-                part.type === "text" ? (
+                part.type !== "text" ? null : message.role === "user" ? (
                   <span key={`${message.id}-${i}`}>{part.text}</span>
-                ) : null,
+                ) : (
+                  <div
+                    key={`${message.id}-${i}`}
+                    className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-blockquote:my-1 first:prose-p:mt-0 last:prose-p:mb-0"
+                  >
+                    <Markdown remarkPlugins={[remarkGfm]}>
+                      {part.text}
+                    </Markdown>
+                  </div>
+                ),
               )}
             </div>
           ))}
