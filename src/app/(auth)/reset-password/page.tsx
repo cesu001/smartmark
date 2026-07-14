@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import ResetForm from "@/components/auth/ResetForm";
+
+export const metadata: Metadata = {
+  title: "Reset Password",
+  description: "Set a new password for your Smark account.",
+  // Token-bearing URLs must never be indexed.
+  robots: { index: false, follow: false },
+};
 
 type PageProps = {
   searchParams: Promise<{

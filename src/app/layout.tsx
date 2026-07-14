@@ -15,8 +15,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Smark",
-  description: "AI-powered Markdown notes and knowledge base",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://smark.tw",
+  ),
+  title: {
+    default: "Smark — AI-powered Markdown notes & knowledge base",
+    template: "%s · Smark",
+  },
+  description:
+    "Smark is an AI-powered Markdown note app with semantic search, an AI chatbot, and AI summaries — find your notes by meaning, not just keywords.",
+  applicationName: "Smark",
+  openGraph: {
+    type: "website",
+    siteName: "Smark",
+    title: "Smark — AI-powered Markdown notes & knowledge base",
+    description:
+      "Capture Markdown notes and retrieve them by meaning with AI semantic search and an AI chatbot.",
+    url: "/",
+    // og:image is supplied automatically by src/app/opengraph-image.tsx
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Smark — AI-powered Markdown notes & knowledge base",
+    description:
+      "AI-powered Markdown notes with semantic search and an AI chatbot.",
+    // twitter:image inherits the opengraph-image automatically
+  },
 };
 
 export default function RootLayout({

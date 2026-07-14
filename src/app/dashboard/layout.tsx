@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import AppNavbar from "@/components/dashboard/AppNavbar";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+export const metadata: Metadata = {
+  title: { default: "Dashboard", template: "%s · Smark" },
+  robots: { index: false, follow: false },
+};
 
 export default function DashboardLayout({
   children,

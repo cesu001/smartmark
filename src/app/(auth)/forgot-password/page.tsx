@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import ForgotForm from "@/components/auth/ForgotForm";
 import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Forgot Password",
+  description: "Request a password reset link for your Smark account.",
+  alternates: { canonical: "/forgot-password" },
+};
 
 export default async function Page() {
   const session = await getServerSession(authOptions);
