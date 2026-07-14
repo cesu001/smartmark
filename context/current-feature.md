@@ -1,20 +1,32 @@
-# Current Feature
+# Current Feature: SEO Metadata
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Public marketing/auth surface ranks and shows rich link previews; entire authenticated dashboard is kept out of search indexes.
+- **Root layout** (`src/app/layout.tsx`): add `metadataBase` (from `NEXT_PUBLIC_APP_URL`, fallback `https://smark.tw`), convert `title` to `{ default, template: "%s · Smark" }`, real description (semantic search / AI chatbot / AI summaries — no auto-tagging), plus `openGraph` + `twitter` defaults.
+- **Homepage** (`src/app/page.tsx`): `metadata` export with absolute title, ~155-char description, `alternates.canonical: "/"`; plus JSON-LD via native `<script type="application/ld+json">` (`@graph`: Organization, WebSite + SearchAction, SoftwareApplication + Offer) with `<`-escaping. Pricing in JSON-LD must match the live "Pro is FREE (limited time)" promo, not a hardcoded $5.
+- **Dashboard layout** (`src/app/dashboard/layout.tsx`): `robots: { index: false, follow: false }` + title template so all `/dashboard/*` inherit noindex. Optional per-entity `generateMetadata` on `collection/[id]` and `tag/[id]` (UX title only).
+- **Auth pages** (`src/app/(auth)/*`): static `metadata` per page — login `Log In`, register `Sign Up`, forgot-password `Reset Password`, reset-password `Reset Password` + **`noindex`**.
+- **`src/app/robots.ts`** (new): allow `/`, disallow `/dashboard/`, `/api/`, `/reset-password`, point at sitemap.
+- **`src/app/sitemap.ts`** (new): public URLs only (`/`, `/login`, `/register`, `/forgot-password`).
+- **OG image**: generated `src/app/opengraph-image.tsx` via `next/og` `ImageResponse` (preferred, same technique as `src/app/icon.tsx`) referenced by root `openGraph`/`twitter`.
 
 ## References
 
-<!-- Add references here -->
+- Spec: `context/features/seo-metadata-spec.md`
+- Research + target code for every item: `docs/seo-metadata.md` (§4 metadata, §5 JSON-LD, §6 priority order)
 
 ## Notes
 
-<!-- Add notes here -->
+- Production domain `smark.tw`; `NEXT_PUBLIC_APP_URL` is the single source of truth for all base URLs (`metadataBase`, `robots.ts`, `sitemap.ts`, JSON-LD).
+- **Accuracy guardrails:** no auto-tagging/auto-organize claims anywhere (that feature was never built); JSON-LD pricing must match the visible promo.
+- **Out of scope:** dashboard/API structured data; hreflang/multi-language (`lang="en"` stays); `@authModal/(.)*` routes (inherit base route metadata).
+- Suggested commit/build order: metadataBase → dashboard noindex → title template → homepage metadata → OG/Twitter + image → robots/sitemap → auth pages → JSON-LD.
+- Verify: `npm run build` + `npm run lint` clean on changed files; view-source checks on `/`, `/login`, a `/dashboard` page; fetch `/robots.txt` + `/sitemap.xml`; validate JSON-LD with Google Rich Results Test.
 
 ## TODOs
 

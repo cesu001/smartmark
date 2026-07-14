@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { authOptions } from "@/lib/auth";
 import LoginForm from "@/components/auth/LoginForm";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import SocialSignIn from "@/components/auth/SocialSignIn";
+
+export const metadata: Metadata = {
+  title: "Log In",
+  description: "Log in to your Smark account to access your AI-powered notes.",
+  alternates: { canonical: "/login" },
+};
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);

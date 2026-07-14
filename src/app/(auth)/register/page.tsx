@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import RegisterForm from "@/components/auth/RegisterForm";
 import SocialSignIn from "@/components/auth/SocialSignIn";
 import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Sign Up",
+  description:
+    "Create a free Smark account and start taking AI-powered Markdown notes.",
+  alternates: { canonical: "/register" },
+};
 
 export default async function RegisterPage() {
   const session = await getServerSession(authOptions);
