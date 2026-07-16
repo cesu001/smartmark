@@ -18,7 +18,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
   },
   {
     title: "Legal",
-    links: [{ label: "Privacy" }, { label: "Terms" }],
+    links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms" }],
   },
 ];
 
