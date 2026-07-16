@@ -8,6 +8,7 @@ import { HomeAiSection } from "@/components/homepage/HomeAiSection";
 import { HomePricing } from "@/components/homepage/HomePricing";
 import { HomeCta } from "@/components/homepage/HomeCta";
 import { HomeFooter } from "@/components/homepage/HomeFooter";
+import { AdSense } from "@/components/AdSense";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://smark.tw";
 
@@ -73,6 +74,7 @@ export default async function Home() {
 
   return (
     <div id="top">
+      <AdSense />
       {/* JSON-LD is structured data, not executable JS; `<` is escaped to prevent injection. */}
       <script
         type="application/ld+json"
