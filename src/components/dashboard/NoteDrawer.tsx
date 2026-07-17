@@ -449,6 +449,20 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     URL.revokeObjectURL(url);
   }
 
+  // Refetch the collection/tag lists on demand so items added from the sidebar
+  // (which only triggers router.refresh(), not a re-fetch of this client state)
+  // show up when the user opens the Collection select or Tags popover.
+  const refreshCollections = useCallback(() => {
+    fetch("/api/dashboard/collection")
+      .then((r) => { if (r.ok) r.json().then(setCollections); })
+      .catch(() => null);
+  }, []);
+  const refreshTags = useCallback(() => {
+    fetch("/api/dashboard/tag")
+      .then((r) => { if (r.ok) r.json().then(setTags); })
+      .catch(() => null);
+  }, []);
+
   const collectionName = collections.find((c) => c.id === collectionId)?.name ?? null;
   const selectedTags = tags.filter((t) => selectedTagIds.includes(t.id));
   const isEmptyNote = editor?.isEmpty ?? true;
@@ -616,6 +630,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
                 setCollectionId(v);
                 scheduleAutoSaveRef.current();
               }}
+              onOpenChange={(open) => {
+                if (open) refreshCollections();
+              }}
             >
               <SelectTrigger className="h-7 w-44 text-xs">
                 <SelectValue placeholder="Collection (optional)" />
@@ -629,7 +646,13 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
               </SelectContent>
             </Select>
 
-            <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+            <Popover
+              open={tagPopoverOpen}
+              onOpenChange={(open) => {
+                if (open) refreshTags();
+                setTagPopoverOpen(open);
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
                   <Tag className="h-3 w-3" />

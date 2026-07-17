@@ -1,20 +1,23 @@
-# Current Feature
+# Drawer Stale Collection/Tag Lists Fix
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- When editing a note in the drawer, collections and tags created from the sidebar while the drawer is open should appear in the Collection select and Tags popover without needing to close/reopen the note.
 
 ## References
 
-<!-- Add references here -->
+- `src/components/dashboard/NoteDrawer.tsx`
+- `GET /api/dashboard/collection`, `GET /api/dashboard/tag`
 
 ## Notes
 
-<!-- Add notes here -->
+- Root cause: `NoteDrawer` is a client component that loads the collection/tag lists into local state only once, in the `useEffect` keyed on `noteId`. Sidebar creation (`SidebarAddCollection`/`SidebarAddTag`) only calls `router.refresh()`, which re-renders server components but does not re-trigger the drawer's client fetch, so newly-created items are missing from the dropdowns.
+- Fix: added `refreshCollections()`/`refreshTags()` that re-fetch the existing GET endpoints, wired to fire when the Collection `Select` or Tags `Popover` opens (`onOpenChange`). Fresh data at the moment of use, no polling.
+- Client-side data-freshness fix only — no server-action/utility logic changed, so no new unit tests.
 
 ## TODOs
 
@@ -22,6 +25,7 @@ Not Started
 - Build the PayPal payment/paywall feature, then revert `User.isPro` in `prisma/schema.prisma` to `@default(false)` and gate the Pro tier behind actual payment again (see `context/features/quick-fix02.md`).
 - **(code scanner, low)** Delete-confirmation `AlertDialog` is duplicated near-verbatim between `NoteDrawer.tsx` and `AppNoteCard.tsx` (same `handleDelete` shape, same dialog markup/classNames, same 20-char title truncation, same toasts). Extract a shared `DeleteNoteDialog` component or `useDeleteNote(noteId)` hook and use it from both.
 - **(code scanner, low)** `src/lib/db/notes.ts`'s `updateNoteFlags` has no unit tests, unlike its siblings `createNote`/`updateNote`/`deleteNote` in `notes.test.ts`. Add cases for the not-found/ownership branch (mirrors `deleteNote`'s tests) and the happy-path `prisma.note.update` call.
+- **(next feature)** Remove the "Draft" collection auto-assignment. `updateNote` in `src/lib/db/notes.ts` (lines ~227-228) forces every uncategorized note into a "Draft" collection on autosave, but the whole app now treats collections as optional (`collectionId String?`, Zod `.nullable()`, UI "Collection (optional)", `createNote` stores `null`). Drop the `getOrCreateDraftCollection` fallback so `updateNote` mirrors `createNote`. Once removed, the post-save collection refetch in `NoteDrawer.tsx` (~line 289, which only exists to surface a newly-created Draft) becomes dead code and can be deleted too. Leftover from when the collection field was required (2026-06-26).
 - Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env` (see `.env.example`) before deploying rate limiting.
 - **(code scanner, low)** `src/middleware.ts` has a dead `export { default } from "next-auth/middleware"` re-export that's shadowed by the custom `middleware` function — remove it.
 - **(code scanner, low)** `src/app/(auth)/register/page.tsx` heading reads "Welcome Back !" (copy-pasted from login) — should be register-appropriate copy.
