@@ -1,20 +1,33 @@
-# Current Feature
+# Remove Draft Collection Auto-Assignment
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- A note saved (via autosave or explicit save) without a collection selected stays **uncategorized** (`collectionId = null`) instead of being force-assigned to a "Draft" collection.
+- `updateNote` mirrors `createNote`: it only sets/validates a collection when one is actually provided.
+- The now-obsolete "Draft" plumbing is fully removed — no dead code left behind (`getOrCreateDraftCollection` and the drawer's post-save Draft-sync refetch).
+- Test suite updated to reflect the new behavior and still green.
 
 ## References
 
-<!-- Add references here -->
+- `src/lib/db/notes.ts` — `updateNote` (~L226-231), plus the `getOrCreateDraftCollection` import (~L7)
+- `src/lib/db/collections.ts` — `getOrCreateDraftCollection` definition (~L156-166), used ONLY by `updateNote`
+- `src/components/dashboard/NoteDrawer.tsx` — post-save Draft-sync refetch block (~L286-292)
+- `src/lib/db/notes.test.ts` — the "auto-creates a Draft collection" case (~L130-146) + Draft mock refs (L20, L33, L47, L181, L197)
+- `src/lib/db/collections.test.ts` — `getOrCreateDraftCollection` import (L22) + describe block (~L48-61)
 
 ## Notes
 
-<!-- Add notes here -->
+- Why this is safe: the app already treats collections as fully optional everywhere else — schema `collectionId String?` (`onDelete: SetNull`), Zod `collectionId: z.string().min(1).optional().nullable()` on both note routes, the UI Select placeholder "Collection (optional)", read-mode hides the collection chip when absent, and `createNote` already stores `null`. Only `updateNote` still forces Draft — a leftover from when the collection field was required (2026-06-26).
+- Removal plan:
+  1. `updateNote`: drop the `if (!collectionId) collectionId = await getOrCreateDraftCollection(userId)` fallback so an absent collection stays `null`; keep the ownership check on the `else if` path for when a collection IS provided. Remove the unused import.
+  2. `collections.ts`: delete `getOrCreateDraftCollection` (dead after step 1).
+  3. `NoteDrawer.tsx`: with Draft gone the PUT response's `collectionId` is `null` when none was selected, so the `if (data.collectionId && !collectionId)` refetch branch can never fire — remove that block (and its comment). The general on-open `refreshCollections()`/`refreshTags()` added in the previous fix stay.
+  4. Tests: rewrite the notes.test "auto-creates a Draft" case to assert `updateNote` stores `null` / does NOT call the (removed) helper; strip the Draft mock from the other two updateNote cases; delete the collections.test describe block + import.
+- Out of scope / no migration: existing "Draft" collections and any notes already inside them are left untouched — this only changes behavior going forward. Users can rename/delete a leftover "Draft" collection manually via the existing collection actions.
 
 ## TODOs
 
