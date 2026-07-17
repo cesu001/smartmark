@@ -278,18 +278,11 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
           body: JSON.stringify({ title, collectionId: collectionId || null, tagIds: selectedTagIds, content }),
         });
         if (!res.ok) throw new Error();
-        const data: { id: string; collectionId: string } = await res.json();
+        const data: { id: string; collectionId: string | null } = await res.json();
         // The UI updates below would land on whatever note is now displayed, so
         // skip them when flushing on leave — only the DB write and the sidebar
         // refresh (which are note-agnostic) should run in that case.
         if (!silent) {
-          // Server may have assigned a Draft collection — sync it to UI
-          if (data.collectionId && !collectionId) {
-            setCollectionId(data.collectionId);
-            fetch("/api/dashboard/collection")
-              .then((r) => { if (r.ok) r.json().then(setCollections); })
-              .catch(() => null);
-          }
           setUpdatedAt(new Date().toISOString());
           setSaveStatus("saved");
           if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
@@ -297,10 +290,13 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
           onTitleSaved?.(title);
         }
 
-        // Only refresh the sidebar (collection/tag counts) when the note's collection or tags actually changed
+        // Only refresh the sidebar (collection/tag counts) when the note's collection or tags actually changed.
+        // Normalize null → "" so an uncategorized note (collectionId null) doesn't read as a change vs. the
+        // load-time baseline (which also uses "" for no collection).
+        const nextCollectionId = data.collectionId ?? "";
         const nextTagIds = [...selectedTagIds].sort().join(",");
-        if (data.collectionId !== lastMetaRef.current.collectionId || nextTagIds !== lastMetaRef.current.tagIds) {
-          lastMetaRef.current = { collectionId: data.collectionId, tagIds: nextTagIds };
+        if (nextCollectionId !== lastMetaRef.current.collectionId || nextTagIds !== lastMetaRef.current.tagIds) {
+          lastMetaRef.current = { collectionId: nextCollectionId, tagIds: nextTagIds };
           router.refresh();
         }
         return true;

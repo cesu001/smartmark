@@ -2,10 +2,7 @@ import { cache } from "react";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { Note } from "@/types/dashboard";
-import {
-  verifyCollectionOwnership,
-  getOrCreateDraftCollection,
-} from "./collections";
+import { verifyCollectionOwnership } from "./collections";
 import { verifyTagsOwnership } from "./tags";
 import { embedNoteContent } from "@/lib/ai/embeddings";
 
@@ -223,10 +220,8 @@ export async function updateNote(
   });
   if (!existing) return { status: "not_found" };
 
-  let collectionId = data.collectionId ?? null;
-  if (!collectionId) {
-    collectionId = await getOrCreateDraftCollection(userId);
-  } else if (!(await verifyCollectionOwnership(userId, collectionId))) {
+  const collectionId = data.collectionId ?? null;
+  if (collectionId && !(await verifyCollectionOwnership(userId, collectionId))) {
     return { status: "invalid_collection" };
   }
 

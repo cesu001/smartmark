@@ -153,21 +153,6 @@ export async function verifyCollectionOwnership(
   return collection !== null;
 }
 
-export async function getOrCreateDraftCollection(
-  userId: string,
-): Promise<string> {
-  const draft = await prisma.collection.findFirst({
-    where: { userId, name: "Draft" },
-    select: { id: true },
-  });
-  if (draft) return draft.id;
-  const created = await prisma.collection.create({
-    data: { name: "Draft", userId },
-    select: { id: true },
-  });
-  return created.id;
-}
-
 export async function updateCollectionName(
   collectionId: string,
   userId: string,

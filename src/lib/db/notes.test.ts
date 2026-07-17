@@ -17,7 +17,6 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/db/collections", () => ({
   verifyCollectionOwnership: vi.fn(),
-  getOrCreateDraftCollection: vi.fn(),
 }));
 
 vi.mock("@/lib/db/tags", () => ({
@@ -30,7 +29,7 @@ vi.mock("@/lib/ai/embeddings", () => ({
 }));
 
 import { prisma } from "@/lib/db";
-import { verifyCollectionOwnership, getOrCreateDraftCollection } from "@/lib/db/collections";
+import { verifyCollectionOwnership } from "@/lib/db/collections";
 import { verifyTagsOwnership } from "@/lib/db/tags";
 import { embedNoteContent } from "@/lib/ai/embeddings";
 import {
@@ -44,7 +43,6 @@ import {
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
 const mockedVerifyCollectionOwnership = vi.mocked(verifyCollectionOwnership);
-const mockedGetOrCreateDraftCollection = vi.mocked(getOrCreateDraftCollection);
 const mockedVerifyTagsOwnership = vi.mocked(verifyTagsOwnership);
 const mockedEmbedNoteContent = vi.mocked(embedNoteContent);
 
@@ -127,11 +125,10 @@ describe("updateNote", () => {
     expect(result).toEqual({ status: "not_found" });
   });
 
-  it("auto-creates a Draft collection when none is provided", async () => {
+  it("leaves the note uncategorized when no collection is provided", async () => {
     mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1" } as never);
-    mockedGetOrCreateDraftCollection.mockResolvedValue("draft-1");
     mockedVerifyTagsOwnership.mockResolvedValue(true);
-    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: "draft-1" } as never);
+    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: null } as never);
 
     const result = await updateNote("note-1", "user-1", {
       title: "t",
@@ -140,9 +137,12 @@ describe("updateNote", () => {
       tagIds: [],
     });
 
-    expect(mockedGetOrCreateDraftCollection).toHaveBeenCalledWith("user-1");
+    // No collection given → stays null (no Draft fallback), and ownership isn't checked.
     expect(mockedVerifyCollectionOwnership).not.toHaveBeenCalled();
-    expect(result).toEqual({ status: "ok", id: "note-1", collectionId: "draft-1" });
+    expect(mockedPrisma.note.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ collectionId: null }) }),
+    );
+    expect(result).toEqual({ status: "ok", id: "note-1", collectionId: null });
   });
 
   it("rejects when the given collectionId doesn't belong to the user", async () => {
@@ -178,9 +178,8 @@ describe("updateNote", () => {
 
   it("skips the embedding refresh when content is unchanged", async () => {
     mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1", content: "same" } as never);
-    mockedGetOrCreateDraftCollection.mockResolvedValue("draft-1");
     mockedVerifyTagsOwnership.mockResolvedValue(true);
-    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: "draft-1" } as never);
+    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: null } as never);
 
     await updateNote("note-1", "user-1", {
       title: "new title",
@@ -194,9 +193,8 @@ describe("updateNote", () => {
 
   it("re-embeds when content changed", async () => {
     mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1", content: "old" } as never);
-    mockedGetOrCreateDraftCollection.mockResolvedValue("draft-1");
     mockedVerifyTagsOwnership.mockResolvedValue(true);
-    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: "draft-1" } as never);
+    mockedPrisma.note.update.mockResolvedValue({ id: "note-1", collectionId: null } as never);
 
     await updateNote("note-1", "user-1", {
       title: "t",
