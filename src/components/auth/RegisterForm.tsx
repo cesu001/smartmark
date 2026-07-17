@@ -10,7 +10,9 @@ import {
   FieldSet,
 } from "../ui/field";
 import { Input } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
+import Link from "next/link";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -20,6 +22,9 @@ const registerSchema = z
     email: z.string().email("Please enter a valid email address."),
     password: z.string().min(6, "Password must be at least 6 characters long."),
     confirmPassword: z.string().min(6, "Please confirm your password."),
+    consent: z.literal(true, {
+      error: "You must agree to the Privacy Policy to continue.",
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -164,6 +169,46 @@ const RegisterForm = () => {
           />
         </FieldGroup>
       </FieldSet>
+      <Controller
+        name="consent"
+        control={form.control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid} className="mt-4">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="consent"
+                checked={!!field.value}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                onBlur={field.onBlur}
+                aria-invalid={fieldState.invalid}
+                className="mt-0.5"
+              />
+              <FieldLabel
+                htmlFor="consent"
+                className="text-sm font-normal leading-snug"
+              >
+                <span>
+                  I agree to the{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline-offset-2 transition-colors duration-200 hover:text-primary/80 hover:underline"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </FieldLabel>
+            </div>
+            {fieldState.invalid && (
+              <FieldDescription className="text-destructive">
+                {fieldState.error?.message}
+              </FieldDescription>
+            )}
+          </Field>
+        )}
+      />
       <Field orientation="vertical" className="mt-4">
         <Button
           form="user_register"
