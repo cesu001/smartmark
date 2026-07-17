@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import AppNavbar from "@/components/dashboard/AppNavbar";
 import AppSidebar from "@/components/dashboard/AppSidebar";
+import AppSidebarSkeleton from "@/components/dashboard/AppSidebarSkeleton";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
@@ -15,7 +17,9 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <Suspense fallback={<AppSidebarSkeleton />}>
+        <AppSidebar />
+      </Suspense>
       <main className="w-full flex flex-col h-screen overflow-hidden">
         <AppNavbar />
         <div className="flex-1 min-h-0 p-2 overflow-auto">{children}</div>

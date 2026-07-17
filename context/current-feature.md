@@ -1,20 +1,28 @@
-# Current Feature
+# Loading Skeletons
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Add goals here -->
+- Add route-level `loading.tsx` skeletons across the dashboard so navigation shows an instant skeleton instead of a frozen/blank screen while the server (Prisma/Neon) fetches.
+- Build a shared `NoteCardSkeleton` + `NoteCardGridSkeleton` matching `AppNoteCard`'s shape, reused across all note-grid pages.
+- Cover all 5 note-grid pages: `allnotes`, `pinned`, `favorites`, `collection/[id]`, `tag/[id]` (the latter two include a header skeleton).
+- Cover the main `/dashboard` landing page (stats + grid layout skeleton).
+- Cover `/profile` (avatar + stats + account card skeleton).
 
 ## References
 
-<!-- Add references here -->
+- Existing skeleton primitive: `src/components/ui/skeleton.tsx`
+- Card shape to mirror: `src/components/dashboard/AppNoteCard.tsx`
+- Pages getting `loading.tsx`: `src/app/dashboard/{page,allnotes,pinned,favorites,profile}`, `src/app/dashboard/collection/[id]`, `src/app/dashboard/tag/[id]`
 
 ## Notes
 
-<!-- Add notes here -->
+- `/workbench` already has a `<Suspense>` boundary and `NoteDrawer` already has its own load skeleton — leave untouched.
+- In-component async states (SearchBar spinner, SidebarHoverMenuItem "Loading…", ChatPanel "Thinking…") already covered — out of scope.
+- Purely additive: new `loading.tsx` files + skeleton components. No changes to existing page/data logic.
 
 ## TODOs
 
