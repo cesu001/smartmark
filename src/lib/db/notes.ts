@@ -85,34 +85,84 @@ export interface NotePage {
   nextCursor: string | null;
 }
 
+// The cursor carries the sort key itself (`updatedAt` + `id`) rather than just
+// a row id. Prisma's `cursor` option anchors on a row that must still exist
+// *and* still satisfy the query's `where` filter; when it doesn't, the query
+// silently returns zero rows and the caller reads that as "end of list".
+// That's reachable in normal use: delete the note the cursor points at (every
+// card has a delete action), or un-favorite it while paging /favorites, and
+// the rest of the list becomes unreachable until reload. Comparing sort values
+// instead means the anchor row never has to exist.
+const CURSOR_SEPARATOR = "_";
+
+function encodeCursor(row: { updatedAt: Date; id: string }): string {
+  return `${row.updatedAt.toISOString()}${CURSOR_SEPARATOR}${row.id}`;
+}
+
+function decodeCursor(
+  cursor: string,
+): { updatedAt: Date; id: string } | null {
+  // Split on the FIRST separator: an ISO timestamp never contains one, but ids
+  // are not guaranteed to be free of them.
+  const sep = cursor.indexOf(CURSOR_SEPARATOR);
+  if (sep === -1) return null;
+
+  const updatedAt = new Date(cursor.slice(0, sep));
+  const id = cursor.slice(sep + 1);
+  if (!id || Number.isNaN(updatedAt.getTime())) return null;
+
+  return { updatedAt, id };
+}
+
 /**
- * Shared cursor pagination for the note list views.
+ * Shared keyset pagination for the note list views.
  *
  * Ordered by `updatedAt desc` with `id desc` as a tiebreaker so the sort is
  * total — two notes saved in the same millisecond would otherwise be able to
  * swap places between requests and cause a skipped or duplicated row at a page
  * boundary. Fetches one extra row to determine whether another page exists
  * without a second count query.
+ *
+ * Note that `where` is applied to the cursor comparison as well, so a cursor
+ * naming another user's note simply matches nothing rather than leaking its
+ * position — no separate ownership check is needed for the cursor itself.
  */
 async function pageNotes(
   where: Prisma.NoteWhereInput,
   cursor?: string,
   take: number = NOTES_PAGE_SIZE,
 ): Promise<NotePage> {
+  const after = cursor ? decodeCursor(cursor) : null;
+
+  // A malformed cursor is treated as the end of the list rather than silently
+  // restarting from the top, which would loop the same rows forever.
+  if (cursor && !after) return { notes: [], nextCursor: null };
+
   const rows = await prisma.note.findMany({
-    where,
+    where: after
+      ? {
+          AND: [
+            where,
+            {
+              OR: [
+                { updatedAt: { lt: after.updatedAt } },
+                { updatedAt: after.updatedAt, id: { lt: after.id } },
+              ],
+            },
+          ],
+        }
+      : where,
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: take + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: noteTagInclude,
   });
 
   const hasMore = rows.length > take;
-  const notes = hasMore ? rows.slice(0, take) : rows;
+  const page = hasMore ? rows.slice(0, take) : rows;
 
   return {
-    notes: notes.map(mapNote),
-    nextCursor: hasMore ? notes[notes.length - 1].id : null,
+    notes: page.map(mapNote),
+    nextCursor: hasMore ? encodeCursor(page[page.length - 1]) : null,
   };
 }
 
