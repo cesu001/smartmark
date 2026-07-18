@@ -352,7 +352,10 @@ describe("note list pagination", () => {
     vi.clearAllMocks();
   });
 
-  // Rows shaped like the Prisma result: `tags` is the NoteTag join, not the tag itself.
+  const BASE = new Date("2026-07-18T10:00:00.000Z");
+
+  // Rows shaped like the Prisma result: `tags` is the NoteTag join, not the tag
+  // itself. Timestamps descend so they mirror the `updatedAt desc` ordering.
   function makeRows(count: number) {
     return Array.from({ length: count }, (_, i) => ({
       id: `note-${i}`,
@@ -361,8 +364,8 @@ describe("note list pagination", () => {
       isFavorite: false,
       isPinned: false,
       collectionId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: BASE,
+      updatedAt: new Date(BASE.getTime() - i * 1000),
       tags: [],
     }));
   }
@@ -395,34 +398,65 @@ describe("note list pagination", () => {
     expect(page.nextCursor).toBeNull();
   });
 
-  it("trims the extra row and returns the last kept id as the cursor", async () => {
+  it("trims the extra row and encodes the last kept row as the cursor", async () => {
     mockedPrisma.note.findMany.mockResolvedValue(makeRows(4) as never);
 
     const page = await getAllNotes("user-1", undefined, 3);
 
     expect(page.notes).toHaveLength(3);
     expect(page.notes.at(-1)?.id).toBe("note-2");
-    expect(page.nextCursor).toBe("note-2");
+    // Cursor carries the sort key, not just the id.
+    expect(page.nextCursor).toBe(
+      `${new Date(BASE.getTime() - 2000).toISOString()}_note-2`,
+    );
   });
 
-  it("skips the cursor row itself when paging forward", async () => {
+  it("pages by comparing sort values, so a deleted anchor row still works", async () => {
     mockedPrisma.note.findMany.mockResolvedValue([] as never);
+    const updatedAt = new Date("2026-07-18T09:00:00.000Z");
 
-    await getAllNotes("user-1", "note-9");
+    await getAllNotes("user-1", `${updatedAt.toISOString()}_note-9`);
 
+    // Prisma's own `cursor`/`skip` anchor on a row that must still exist and
+    // still match `where`; a plain value comparison must be used instead.
     const args = mockedPrisma.note.findMany.mock.calls[0][0];
-    expect(args?.cursor).toEqual({ id: "note-9" });
-    expect(args?.skip).toBe(1);
+    expect(args?.cursor).toBeUndefined();
+    expect(args?.skip).toBeUndefined();
+    expect(args?.where).toEqual({
+      AND: [
+        { userId: "user-1" },
+        {
+          OR: [
+            { updatedAt: { lt: updatedAt } },
+            { updatedAt, id: { lt: "note-9" } },
+          ],
+        },
+      ],
+    });
   });
 
-  it("omits cursor and skip on the first page", async () => {
+  it("applies no cursor filter on the first page", async () => {
     mockedPrisma.note.findMany.mockResolvedValue([] as never);
 
     await getAllNotes("user-1");
 
     const args = mockedPrisma.note.findMany.mock.calls[0][0];
-    expect(args?.cursor).toBeUndefined();
-    expect(args?.skip).toBeUndefined();
+    expect(args?.where).toEqual({ userId: "user-1" });
+  });
+
+  it("treats a malformed cursor as the end of the list rather than restarting", async () => {
+    const page = await getAllNotes("user-1", "not-a-valid-cursor");
+
+    expect(page).toEqual({ notes: [], nextCursor: null });
+    // Must not fall back to an unfiltered query, which would loop page 1 forever.
+    expect(mockedPrisma.note.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cursor whose timestamp is unparseable", async () => {
+    const page = await getAllNotes("user-1", "totally-bogus_note-1");
+
+    expect(page).toEqual({ notes: [], nextCursor: null });
+    expect(mockedPrisma.note.findMany).not.toHaveBeenCalled();
   });
 
   it("scopes the favorites page by isFavorite and userId", async () => {
@@ -432,5 +466,20 @@ describe("note list pagination", () => {
 
     const args = mockedPrisma.note.findMany.mock.calls[0][0];
     expect(args?.where).toEqual({ userId: "user-1", isFavorite: true });
+  });
+
+  it("keeps the ownership filter alongside the cursor comparison", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue([] as never);
+    const updatedAt = new Date("2026-07-18T09:00:00.000Z");
+
+    await getFavoriteNotes("user-1", `${updatedAt.toISOString()}_note-3`);
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    // The userId/isFavorite filter must survive being ANDed with the cursor,
+    // or a crafted cursor could widen the result set.
+    expect((args?.where as { AND: unknown[] }).AND[0]).toEqual({
+      userId: "user-1",
+      isFavorite: true,
+    });
   });
 });
