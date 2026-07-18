@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import { getContentPreview } from "@/lib/note-preview";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
@@ -35,18 +34,6 @@ const AppNoteCard = ({ note, encodedTitle, onDeleted }: AppNoteCardProps) => {
 
   const previewContent = getContentPreview(note.content);
   const hasContent = Boolean(previewContent);
-
-  const editor = useEditor({
-    extensions: [StarterKit, Markdown],
-    content: previewContent,
-    editable: false,
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        class: "note-preview text-sm text-text-secondary",
-      },
-    },
-  });
 
   return (
     <>
@@ -82,7 +69,12 @@ const AppNoteCard = ({ note, encodedTitle, onDeleted }: AppNoteCardProps) => {
         </CardTitle>
         <CardContent className="flex-1 min-h-15 max-h-24 overflow-hidden">
           {hasContent ? (
-            <EditorContent editor={editor} />
+            // react-markdown v10 takes no className of its own, so the
+            // `.note-preview` styles (bold headings, list markers, flattened
+            // margins) go on a wrapper — same approach as ChatPanel.
+            <div className="note-preview text-sm text-text-secondary">
+              <Markdown remarkPlugins={[remarkGfm]}>{previewContent}</Markdown>
+            </div>
           ) : (
             <p className="text-sm italic text-text-secondary">Empty content</p>
           )}
