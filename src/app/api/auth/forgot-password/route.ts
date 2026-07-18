@@ -1,21 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
+import { z } from "zod";
 import { resend } from "@/lib/resend";
 import { applyRateLimit, forgotPasswordLimiter, getIP } from "@/lib/rate-limit";
+
+// Validate at the API boundary (mirrors the frontend ForgotForm schema and the
+// sibling register/reset-password routes).
+const forgotSchema = z.object({
+  email: z.string().email(),
+});
 
 export async function POST(request: Request) {
   try {
     const limited = await applyRateLimit(forgotPasswordLimiter, getIP(request));
     if (limited) return limited;
 
-    const { email } = await request.json();
-    if (!email) {
+    const parsed = forgotSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email is required." },
+        { error: "A valid email is required." },
         { status: 400 },
       );
     }
+    const { email } = parsed.data;
     const foundedUser = await prisma.user.findUnique({
       where: { email },
     });

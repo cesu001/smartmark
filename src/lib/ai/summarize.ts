@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { CHAT_MODEL } from "./client";
+import { escapeForPrompt } from "./prompt-utils";
 
 // Not a hard API limit like the embedding model's 8192-token cap — gpt-5.4-nano's
 // context window is far larger. This is a cost/abuse guardrail, so a character
@@ -22,7 +23,7 @@ export async function summarizeNoteContent(content: string): Promise<string> {
   const { text } = await generateText({
     model: CHAT_MODEL,
     system: SYSTEM_PROMPT,
-    prompt: `<note>\n${truncated}\n</note>`,
+    prompt: `<note>\n${escapeForPrompt(truncated)}\n</note>`,
   });
 
   return text;

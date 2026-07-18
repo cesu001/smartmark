@@ -57,7 +57,7 @@ function WorkbenchContent() {
       const updatedTabs = [...tabs, { id: activeTabId, title: currentTitle }];
       const newTabsParam = serializedTabs(updatedTabs);
       router.replace(
-        `/dashboard/workbench?open=${activeTabId}&title=${currentTitle}&tabs=${newTabsParam}`,
+        `/dashboard/workbench?open=${activeTabId}&title=${encodeURIComponent(currentTitle)}&tabs=${newTabsParam}`,
       );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

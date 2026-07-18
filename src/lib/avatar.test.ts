@@ -32,10 +32,15 @@ describe("validateAvatarFile", () => {
       ["a.jpeg", "image/jpeg"],
       ["a.gif", "image/gif"],
       ["a.webp", "image/webp"],
-      ["a.svg", "image/svg+xml"],
     ];
     for (const [fileName, mimeType] of cases) {
       expect(validateAvatarFile(fileName, 1024, mimeType).valid).toBe(true);
     }
+  });
+
+  it("rejects SVG uploads even when the mime type matches the extension", () => {
+    const result = validateAvatarFile("avatar.svg", 1024, "image/svg+xml");
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/Unsupported file type/);
   });
 });
