@@ -1,7 +1,35 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserId } from "@/lib/auth-utils";
-import { createNote } from "@/lib/db/notes";
+import { createNote, getAllNotes, getFavoriteNotes } from "@/lib/db/notes";
+
+// Which list view is paging. Both are userId-scoped in the db utilities.
+const listQuerySchema = z.object({
+  scope: z.enum(["all", "favorites"]).default("all"),
+  cursor: z.string().min(1).optional(),
+});
+
+/** Fetches the next page for the "Load more" button on the note list views. */
+export async function GET(request: Request) {
+  const userId = await requireUserId();
+
+  const { searchParams } = new URL(request.url);
+  const parsed = listQuerySchema.safeParse({
+    scope: searchParams.get("scope") ?? undefined,
+    cursor: searchParams.get("cursor") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid query" }, { status: 400 });
+  }
+
+  const { scope, cursor } = parsed.data;
+  const page =
+    scope === "favorites"
+      ? await getFavoriteNotes(userId, cursor)
+      : await getAllNotes(userId, cursor);
+
+  return NextResponse.json(page);
+}
 
 const createNoteSchema = z.object({
   title: z.string().min(1).max(255),

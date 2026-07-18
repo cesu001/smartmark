@@ -40,6 +40,9 @@ import {
   searchNotesByTitle,
   searchNotesByContent,
   searchNotesByEmbedding,
+  getAllNotes,
+  getFavoriteNotes,
+  NOTES_PAGE_SIZE,
 } from "@/lib/db/notes";
 
 const mockedPrisma = vi.mocked(prisma, { deep: true });
@@ -341,5 +344,93 @@ describe("searchNotesByEmbedding", () => {
     const results = await searchNotesByEmbedding("user-1", [0.1, 0.2, 0.3]);
 
     expect(results[0].excerpt).toBe("Vectors are used for semantic search.");
+  });
+});
+
+describe("note list pagination", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Rows shaped like the Prisma result: `tags` is the NoteTag join, not the tag itself.
+  function makeRows(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      id: `note-${i}`,
+      title: `Note ${i}`,
+      content: "body",
+      isFavorite: false,
+      isPinned: false,
+      collectionId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: [],
+    }));
+  }
+
+  it("requests one row beyond the page size to detect a next page", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue(makeRows(3) as never);
+
+    await getAllNotes("user-1");
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    expect(args?.take).toBe(NOTES_PAGE_SIZE + 1);
+    expect(args?.where).toEqual({ userId: "user-1" });
+  });
+
+  it("orders by updatedAt then id so the sort is total", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue([] as never);
+
+    await getAllNotes("user-1");
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    expect(args?.orderBy).toEqual([{ updatedAt: "desc" }, { id: "desc" }]);
+  });
+
+  it("returns a null cursor and every row when the page is not full", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue(makeRows(3) as never);
+
+    const page = await getAllNotes("user-1", undefined, 5);
+
+    expect(page.notes).toHaveLength(3);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it("trims the extra row and returns the last kept id as the cursor", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue(makeRows(4) as never);
+
+    const page = await getAllNotes("user-1", undefined, 3);
+
+    expect(page.notes).toHaveLength(3);
+    expect(page.notes.at(-1)?.id).toBe("note-2");
+    expect(page.nextCursor).toBe("note-2");
+  });
+
+  it("skips the cursor row itself when paging forward", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue([] as never);
+
+    await getAllNotes("user-1", "note-9");
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    expect(args?.cursor).toEqual({ id: "note-9" });
+    expect(args?.skip).toBe(1);
+  });
+
+  it("omits cursor and skip on the first page", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue([] as never);
+
+    await getAllNotes("user-1");
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    expect(args?.cursor).toBeUndefined();
+    expect(args?.skip).toBeUndefined();
+  });
+
+  it("scopes the favorites page by isFavorite and userId", async () => {
+    mockedPrisma.note.findMany.mockResolvedValue([] as never);
+
+    await getFavoriteNotes("user-1");
+
+    const args = mockedPrisma.note.findMany.mock.calls[0][0];
+    expect(args?.where).toEqual({ userId: "user-1", isFavorite: true });
   });
 });

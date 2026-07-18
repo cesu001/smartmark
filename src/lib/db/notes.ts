@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { after } from "next/server";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { Note } from "@/types/dashboard";
 import { verifyCollectionOwnership } from "./collections";
@@ -75,13 +76,52 @@ export async function getNoteStats(userId: string) {
   return { total, favorites };
 }
 
-export async function getAllNotes(userId: string): Promise<Note[]> {
-  const notes = await prisma.note.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
+/** Notes per page on the paginated list views. */
+export const NOTES_PAGE_SIZE = 24;
+
+export interface NotePage {
+  notes: Note[];
+  /** Pass back as `cursor` to fetch the next page; null when the list is exhausted. */
+  nextCursor: string | null;
+}
+
+/**
+ * Shared cursor pagination for the note list views.
+ *
+ * Ordered by `updatedAt desc` with `id desc` as a tiebreaker so the sort is
+ * total — two notes saved in the same millisecond would otherwise be able to
+ * swap places between requests and cause a skipped or duplicated row at a page
+ * boundary. Fetches one extra row to determine whether another page exists
+ * without a second count query.
+ */
+async function pageNotes(
+  where: Prisma.NoteWhereInput,
+  cursor?: string,
+  take: number = NOTES_PAGE_SIZE,
+): Promise<NotePage> {
+  const rows = await prisma.note.findMany({
+    where,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: take + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: noteTagInclude,
   });
-  return notes.map(mapNote);
+
+  const hasMore = rows.length > take;
+  const notes = hasMore ? rows.slice(0, take) : rows;
+
+  return {
+    notes: notes.map(mapNote),
+    nextCursor: hasMore ? notes[notes.length - 1].id : null,
+  };
+}
+
+export async function getAllNotes(
+  userId: string,
+  cursor?: string,
+  take?: number,
+): Promise<NotePage> {
+  return pageNotes({ userId }, cursor, take);
 }
 
 export async function getRecentNotes(
@@ -97,13 +137,12 @@ export async function getRecentNotes(
   return notes.map(mapNote);
 }
 
-export async function getFavoriteNotes(userId: string): Promise<Note[]> {
-  const notes = await prisma.note.findMany({
-    where: { userId, isFavorite: true },
-    orderBy: { updatedAt: "desc" },
-    include: noteTagInclude,
-  });
-  return notes.map(mapNote);
+export async function getFavoriteNotes(
+  userId: string,
+  cursor?: string,
+  take?: number,
+): Promise<NotePage> {
+  return pageNotes({ userId, isFavorite: true }, cursor, take);
 }
 
 export async function getPinnedNotes(
