@@ -32,8 +32,13 @@ function WorkbenchContent() {
   const tabsParam = searchParams.get("tabs") || "";
   const tabs: Tab[] = tabsParam
     ? tabsParam.split(",").map((tab) => {
-        const [id, title] = tab.split("_");
-        return { id, title: decodeURIComponent(title || "untitled") };
+        // Split on the FIRST "_" only: the note id (cuid) never contains "_",
+        // but encodeURIComponent leaves "_" untouched, so a title with an
+        // underscore would break a naive `split("_")` destructure.
+        const sep = tab.indexOf("_");
+        const id = sep === -1 ? tab : tab.slice(0, sep);
+        const rawTitle = sep === -1 ? "" : tab.slice(sep + 1);
+        return { id, title: decodeURIComponent(rawTitle || "untitled") };
       })
     : [];
   // 將tabs陣列轉回URL參數格式

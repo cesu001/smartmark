@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { MoreHorizontal, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { getContentPreview } from "@/lib/note-preview";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -17,16 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
+import DeleteNoteDialog from "./DeleteNoteDialog";
 import { Note } from "@/types/dashboard";
 
 interface AppNoteCardProps {
@@ -35,9 +24,7 @@ interface AppNoteCardProps {
 }
 
 const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
-  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const previewContent = getContentPreview(note.content);
   const hasContent = Boolean(previewContent);
@@ -53,23 +40,6 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
       },
     },
   });
-
-  async function handleDelete() {
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/dashboard/note/${note.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete");
-      toast.success("Note deleted");
-      router.refresh();
-    } catch {
-      toast.error("Failed to delete note");
-    } finally {
-      setDeleting(false);
-      setConfirmOpen(false);
-    }
-  }
 
   return (
     <>
@@ -129,34 +99,12 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
         </CardFooter>
       </Card>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader className="place-items-stretch sm:place-items-stretch text-left">
-            <AlertDialogTitle className="text-xl font-bold">
-              Delete note?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-base font-semibold [text-wrap:unset]">
-              &ldquo;
-              {note.title.length > 20
-                ? note.title.slice(0, 20) + "…"
-                : note.title}
-              &rdquo; will be permanently deleted. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "Deleting…" : "Delete"}
-            </AlertDialogAction>
-            <AlertDialogCancel disabled={deleting} className="w-full mt-0">
-              Cancel
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteNoteDialog
+        noteId={note.id}
+        title={note.title}
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+      />
     </>
   );
 };

@@ -1,5 +1,5 @@
 import { SidebarTrigger } from "../ui/sidebar";
-import { ModeToggle } from "./ＭodeToggle";
+import { ModeToggle } from "./ModeToggle";
 import SearchBar from "./SearchBar";
 import ChatSheet from "./ChatSheet";
 

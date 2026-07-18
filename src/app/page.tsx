@@ -10,7 +10,10 @@ import { HomeCta } from "@/components/homepage/HomeCta";
 import { HomeFooter } from "@/components/homepage/HomeFooter";
 import { AdSense } from "@/components/AdSense";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://smark.tw";
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://smark.tw").replace(
+  /\/+$/,
+  "",
+);
 
 export const metadata: Metadata = {
   title: {

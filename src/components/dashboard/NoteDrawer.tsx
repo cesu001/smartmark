@@ -1,16 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
+import { EditorContent } from "@tiptap/react";
 import { toast } from "sonner";
 import {
-  Check,
   Copy,
   Eye,
-  Folder,
   Import,
   Loader2,
   Pencil,
@@ -19,68 +15,22 @@ import {
   Sparkles,
   SquareArrowRightExit,
   Star,
-  Tag,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { validateImportFile, deriveTitleFromFilename } from "@/lib/note-import";
-import { buildExportContent, buildExportFilename } from "@/lib/note-export";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import DeleteNoteDialog from "./DeleteNoteDialog";
+import NoteMetaBar from "./NoteMetaBar";
+import { validateImportFile, deriveTitleFromFilename } from "@/lib/note-import";
+import { buildExportContent, buildExportFilename } from "@/lib/note-export";
 import { cn } from "@/lib/utils";
-
-interface SimpleCollection {
-  id: string;
-  name: string;
-}
-
-interface SimpleTag {
-  id: string;
-  name: string;
-}
-
-interface NoteData {
-  id: string;
-  title: string;
-  content: string;
-  collectionId: string | null;
-  isPinned: boolean;
-  isFavorite: boolean;
-  tags: { id: string; name: string }[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { useAutoSaveNote } from "@/hooks/useAutoSaveNote";
 
 interface NoteDrawerProps {
   noteId: string;
@@ -90,8 +40,6 @@ interface NoteDrawerProps {
   onDeleted?: () => void;
 }
 
-type SaveStatus = "idle" | "saving" | "saved";
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
@@ -100,226 +48,61 @@ function formatDate(iso: string) {
   });
 }
 
-export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, onTitleSaved, onDeleted }: NoteDrawerProps) {
+export default function NoteDrawer({
+  noteId,
+  startInEditMode,
+  onEditModeChange,
+  onTitleSaved,
+  onDeleted,
+}: NoteDrawerProps) {
   const router = useRouter();
-  const [isEditMode, setIsEditMode] = useState(startInEditMode ?? false);
-  const [title, setTitle] = useState("Untitled Note");
-  const [collectionId, setCollectionId] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [collections, setCollections] = useState<SimpleCollection[]>([]);
-  const [tags, setTags] = useState<SimpleTag[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    editor,
+    isEditMode,
+    setIsEditMode,
+    title,
+    setTitle,
+    collectionId,
+    setCollectionId,
+    selectedTagIds,
+    setSelectedTagIds,
+    collections,
+    tags,
+    isSubmitting,
+    createdAt,
+    updatedAt,
+    saveStatus,
+    isPinned,
+    setIsPinned,
+    isFavorite,
+    setIsFavorite,
+    isNoteLoading,
+    scheduleAutoSave,
+    handleSubmit,
+    refreshCollections,
+    refreshTags,
+  } = useAutoSaveNote({
+    noteId,
+    startInEditMode,
+    onEditModeChange,
+    onTitleSaved,
+  });
+
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [isPinned, setIsPinned] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryPopoverOpen, setSummaryPopoverOpen] = useState(false);
-  const [isNoteLoading, setIsNoteLoading] = useState(true);
-
-  const isLoaded = useRef(false);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Always-current save function — avoids stale closures inside setTimeout.
-  // `silent` persists without touching UI state (used when flushing on leave,
-  // where this component instance is about to display a different note).
-  const doAutoSaveRef = useRef<(silent?: boolean) => Promise<boolean>>(async () => false);
-  // Stable ref so the editor's onUpdate (captured once at creation) always calls the latest scheduler
-  const scheduleAutoSaveRef = useRef<() => void>(() => {});
-  // Tracks last-persisted collection/tags so autosave only refreshes the sidebar when they actually change
-  const lastMetaRef = useRef<{ collectionId: string; tagIds: string }>({ collectionId: "", tagIds: "" });
 
-  const pendingContent = useRef<string | null>(null);
-
-  const editor = useEditor({
-    extensions: [StarterKit, Markdown],
-    content: "",
-    editable: isEditMode,
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-sm dark:prose-invert max-w-none focus:outline-none px-6 py-4 min-h-[300px]",
-      },
-    },
-    onCreate({ editor }) {
-      if (pendingContent.current !== null) {
-        // emitUpdate:false — this is a programmatic load, not a user edit, so it
-        // must not schedule an autosave (Tiptap v3 emits updates by default).
-        editor.commands.setContent(pendingContent.current, { emitUpdate: false });
-        pendingContent.current = null;
-      }
-    },
-    onUpdate() {
-      scheduleAutoSaveRef.current();
-    },
-  });
-
-  // Update scheduleAutoSaveRef every render so editor's onUpdate always calls latest version
-  scheduleAutoSaveRef.current = () => {
-    if (!isLoaded.current) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      // Null the ref once the debounce fires so it accurately reflects "a save
-      // is still pending" — the cleanup flush relies on this to avoid redundant
-      // writes after a save has already gone out.
-      autoSaveTimerRef.current = null;
-      doAutoSaveRef.current();
-    }, 1000);
-  };
-
-  // Sync edit mode → editor editable state
+  // Reset the summary popover when switching notes. NoteDrawer is reused (not
+  // remounted) across tab switches, so a stale summary from note A must not show
+  // over note B. (The note-data reset lives in useAutoSaveNote's load effect.)
   useEffect(() => {
-    editor?.setEditable(isEditMode);
-  }, [editor, isEditMode]);
-
-  const setEditorContent = useCallback(
-    (content: string) => {
-      if (editor) {
-        // emitUpdate:false — programmatic load, must not schedule an autosave.
-        editor.commands.setContent(content, { emitUpdate: false });
-      } else {
-        pendingContent.current = content;
-      }
-    },
-    [editor],
-  );
-
-  // Load note data (plus the user's collections + tags) when noteId changes
-  useEffect(() => {
-    // Guards against a stale fetch: if the user switches notes before this
-    // request resolves, the cleanup sets `ignore` so the late response can't
-    // overwrite the newer note's state.
-    let ignore = false;
-    isLoaded.current = false;
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-    setIsEditMode(startInEditMode ?? false);
-    setTitle("Untitled Note");
-    setCollectionId("");
-    setSelectedTagIds([]);
-    setCreatedAt(null);
-    setUpdatedAt(null);
-    setSaveStatus("idle");
-    setIsPinned(false);
-    setIsFavorite(false);
-    setEditorContent("");
     setSummary(null);
     setSummaryPopoverOpen(false);
     setIsSummarizing(false);
-    setIsNoteLoading(true);
-
-    async function loadNote() {
-      const res = await fetch(`/api/dashboard/note/${noteId}`);
-      if (ignore) return;
-      if (!res.ok) {
-        toast.error("Failed to load note");
-        setIsNoteLoading(false);
-        return;
-      }
-      const { note, collections, tags }: {
-        note: NoteData;
-        collections: SimpleCollection[];
-        tags: SimpleTag[];
-      } = await res.json();
-      if (ignore) return;
-      setCollections(collections);
-      setTags(tags);
-      setTitle(note.title);
-      setCollectionId(note.collectionId ?? "");
-      setSelectedTagIds(note.tags.map((t) => t.id));
-      setCreatedAt(note.createdAt);
-      setUpdatedAt(note.updatedAt);
-      setIsPinned(note.isPinned);
-      setIsFavorite(note.isFavorite);
-      setEditorContent(note.content ?? "");
-      lastMetaRef.current = {
-        collectionId: note.collectionId ?? "",
-        tagIds: [...note.tags.map((t) => t.id)].sort().join(","),
-      };
-      isLoaded.current = true;
-      setIsNoteLoading(false);
-    }
-    loadNote();
-
-    return () => {
-      ignore = true;
-      if (autoSaveTimerRef.current) {
-        // A debounced autosave was still pending when the user closed/switched
-        // this note. Flush it (silently) instead of dropping it, so edits made
-        // within the last second before leaving aren't lost.
-        clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-        doAutoSaveRef.current(true);
-      }
-      if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
-    };
-  // startInEditMode intentionally omitted: only consumed on noteId change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId, setEditorContent]);
-
-  // Keep doAutoSaveRef current whenever relevant state changes
-  useEffect(() => {
-    doAutoSaveRef.current = async (silent = false) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
-      if (!silent) setSaveStatus("saving");
-      try {
-        const res = await fetch(`/api/dashboard/note/${noteId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, collectionId: collectionId || null, tagIds: selectedTagIds, content }),
-        });
-        if (!res.ok) throw new Error();
-        const data: { id: string; collectionId: string | null } = await res.json();
-        // The UI updates below would land on whatever note is now displayed, so
-        // skip them when flushing on leave — only the DB write and the sidebar
-        // refresh (which are note-agnostic) should run in that case.
-        if (!silent) {
-          setUpdatedAt(new Date().toISOString());
-          setSaveStatus("saved");
-          if (savedDisplayTimerRef.current) clearTimeout(savedDisplayTimerRef.current);
-          savedDisplayTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
-          onTitleSaved?.(title);
-        }
-
-        // Only refresh the sidebar (collection/tag counts) when the note's collection or tags actually changed.
-        // Normalize null → "" so an uncategorized note (collectionId null) doesn't read as a change vs. the
-        // load-time baseline (which also uses "" for no collection).
-        const nextCollectionId = data.collectionId ?? "";
-        const nextTagIds = [...selectedTagIds].sort().join(",");
-        if (nextCollectionId !== lastMetaRef.current.collectionId || nextTagIds !== lastMetaRef.current.tagIds) {
-          lastMetaRef.current = { collectionId: nextCollectionId, tagIds: nextTagIds };
-          router.refresh();
-        }
-        return true;
-      } catch {
-        if (!silent) setSaveStatus("idle");
-        return false;
-      }
-    };
-  }, [noteId, title, collectionId, selectedTagIds, editor, onTitleSaved, router]);
-
-  async function handleSubmit() {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-    setIsSubmitting(true);
-    const ok = await doAutoSaveRef.current();
-    setIsSubmitting(false);
-    if (ok) {
-      setIsEditMode(false);
-      onEditModeChange?.(false);
-    }
-  }
+  }, [noteId]);
 
   function handleImportClick() {
     importInputRef.current?.click();
@@ -340,7 +123,7 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     const newTitle = deriveTitleFromFilename(file.name);
     setTitle(newTitle);
     editor?.commands.setContent(content);
-    scheduleAutoSaveRef.current();
+    scheduleAutoSave();
     toast.success("File imported");
   }
 
@@ -372,7 +155,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
         body: JSON.stringify({ isFavorite: next }),
       });
       if (!res.ok) throw new Error();
-      toast.success(next ? "Note added to favorites" : "Note removed from favorites");
+      toast.success(
+        next ? "Note added to favorites" : "Note removed from favorites",
+      );
       router.refresh();
     } catch {
       setIsFavorite(!next);
@@ -380,32 +165,20 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     }
   }
 
-  async function handleDelete() {
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/dashboard/note/${noteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      toast.success("Note deleted");
-      setDeleteConfirmOpen(false);
-      onDeleted?.();
-      router.refresh();
-    } catch {
-      toast.error("Failed to delete note");
-    } finally {
-      setIsDeleting(false);
-    }
-  }
-
   async function handleSummarize() {
     setIsSummarizing(true);
     try {
-      const res = await fetch(`/api/dashboard/note/${noteId}/summary`, { method: "POST" });
+      const res = await fetch(`/api/dashboard/note/${noteId}/summary`, {
+        method: "POST",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Failed to generate summary");
       setSummary(data.summary as string);
       setSummaryPopoverOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate summary");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate summary",
+      );
     } finally {
       setIsSummarizing(false);
     }
@@ -416,9 +189,12 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     editor
       ?.chain()
       .focus()
-      .insertContentAt(0, { type: "paragraph", content: [{ type: "text", text: summary }] })
+      .insertContentAt(0, {
+        type: "paragraph",
+        content: [{ type: "text", text: summary }],
+      })
       .run();
-    scheduleAutoSaveRef.current();
+    scheduleAutoSave();
     setSummaryPopoverOpen(false);
     toast.success("Summary inserted");
   }
@@ -436,7 +212,9 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
   function handleExport() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = ((editor?.storage as any)?.markdown?.getMarkdown() as string | undefined) ?? "";
-    const blob = new Blob([buildExportContent(content)], { type: "text/markdown" });
+    const blob = new Blob([buildExportContent(content)], {
+      type: "text/markdown",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -445,327 +223,246 @@ export default function NoteDrawer({ noteId, startInEditMode, onEditModeChange, 
     URL.revokeObjectURL(url);
   }
 
-  // Refetch the collection/tag lists on demand so items added from the sidebar
-  // (which only triggers router.refresh(), not a re-fetch of this client state)
-  // show up when the user opens the Collection select or Tags popover.
-  const refreshCollections = useCallback(() => {
-    fetch("/api/dashboard/collection")
-      .then((r) => { if (r.ok) r.json().then(setCollections); })
-      .catch(() => null);
-  }, []);
-  const refreshTags = useCallback(() => {
-    fetch("/api/dashboard/tag")
-      .then((r) => { if (r.ok) r.json().then(setTags); })
-      .catch(() => null);
-  }, []);
-
-  const collectionName = collections.find((c) => c.id === collectionId)?.name ?? null;
-  const selectedTags = tags.filter((t) => selectedTagIds.includes(t.id));
   const isEmptyNote = editor?.isEmpty ?? true;
 
   return (
     <>
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b px-4 py-3 space-y-2 bg-background">
-        {/* Title + actions row */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleTogglePinned}
-              className={cn(
-                isPinned ? "text-primary/30" : "text-muted-foreground",
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="border-b px-4 py-3 space-y-2 bg-background">
+          {/* Title + actions row */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleTogglePinned}
+                className={cn(
+                  isPinned ? "text-primary/30" : "text-muted-foreground",
+                )}
+                title={isPinned ? "Unpin note" : "Pin note"}
+              >
+                <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleToggleFavorite}
+                className={cn(
+                  isFavorite ? "text-primary/30" : "text-muted-foreground",
+                )}
+                title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Star
+                  className={cn("h-4 w-4", isFavorite && "fill-current")}
+                />
+              </Button>
+            </div>
+            <div className="flex-1 min-w-0">
+              {isNoteLoading ? (
+                <Skeleton className="h-5 w-40" />
+              ) : isEditMode ? (
+                <Input
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    scheduleAutoSave();
+                  }}
+                  placeholder="Note title"
+                  className="text-base font-semibold border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
+                />
+              ) : (
+                <h2 className="text-base font-semibold truncate">{title}</h2>
               )}
-              title={isPinned ? "Unpin note" : "Pin note"}
-            >
-              <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleToggleFavorite}
-              className={cn(
-                isFavorite ? "text-primary/30" : "text-muted-foreground",
-              )}
-              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-            >
-              <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
-            </Button>
-          </div>
-          <div className="flex-1 min-w-0">
-            {isNoteLoading ? (
-              <Skeleton className="h-5 w-40" />
-            ) : isEditMode ? (
-              <Input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  scheduleAutoSaveRef.current();
-                }}
-                placeholder="Note title"
-                className="text-base font-semibold border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
-              />
-            ) : (
-              <h2 className="text-base font-semibold truncate">{title}</h2>
+            </div>
+            {saveStatus === "saving" && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                Saving…
+              </span>
             )}
-          </div>
-          {saveStatus === "saving" && (
-            <span className="text-xs text-muted-foreground shrink-0">Saving…</span>
-          )}
-          {saveStatus === "saved" && (
-            <span className="text-xs text-green-500 shrink-0">Saved</span>
-          )}
-          {isEditMode && isEmptyNote && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleImportClick}
-              className="h-8 gap-1.5 shrink-0"
-              title="Import note (.md, .txt)"
-            >
-              <Import className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".md,.txt,text/markdown,text/plain"
-            className="hidden"
-            onChange={handleImportFileChange}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const next = !isEditMode;
-              setIsEditMode(next);
-              onEditModeChange?.(next);
-            }}
-            className="h-8 gap-1.5 shrink-0"
-          >
-            {isEditMode ? (
-              <>
-                <Eye className="h-3.5 w-3.5" />
-                Read
-              </>
-            ) : (
-              <>
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </>
+            {saveStatus === "saved" && (
+              <span className="text-xs text-green-500 shrink-0">Saved</span>
             )}
-          </Button>
-          {isEditMode && (
-            <Button
-              size="sm"
-              onClick={handleSubmit}
-              disabled={isSubmitting || saveStatus === "saving"}
-              className="h-8 shrink-0"
-            >
-              {isSubmitting || saveStatus === "saving" ? "Saving…" : <><Save className="h-3.5 w-3.5" />Save</>}
-            </Button>
-          )}
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteConfirmOpen(true)}
-            className="h-8 gap-1.5 shrink-0"
-            title="Delete note"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-          <Popover open={summaryPopoverOpen} onOpenChange={setSummaryPopoverOpen}>
-            <PopoverTrigger asChild>
+            {isEditMode && isEmptyNote && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleSummarize}
-                disabled={isSummarizing}
+                onClick={handleImportClick}
                 className="h-8 gap-1.5 shrink-0"
-                title="Summarize note (AI)"
+                title="Import note (.md, .txt)"
               >
-                {isSummarizing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Import className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".md,.txt,text/markdown,text/plain"
+              className="hidden"
+              onChange={handleImportFileChange}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const next = !isEditMode;
+                setIsEditMode(next);
+                onEditModeChange?.(next);
+              }}
+              className="h-8 gap-1.5 shrink-0"
+            >
+              {isEditMode ? (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  Read
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </>
+              )}
+            </Button>
+            {isEditMode && (
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={isSubmitting || saveStatus === "saving"}
+                className="h-8 shrink-0"
+              >
+                {isSubmitting || saveStatus === "saving" ? (
+                  "Saving…"
                 ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <>
+                    <Save className="h-3.5 w-3.5" />
+                    Save
+                  </>
                 )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 space-y-3" align="end">
-              <p className="text-sm">{summary}</p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopySummary} className="gap-1.5">
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy
-                </Button>
-                <Button size="sm" onClick={handleInsertSummary} className="gap-1.5">
-                  Insert
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExport}
-            className="h-8 gap-1.5 shrink-0"
-            title="Export note (.md)"
-          >
-            <SquareArrowRightExit className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-
-        {/* Meta row */}
-        {isEditMode ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select
-              value={collectionId}
-              onValueChange={(v) => {
-                setCollectionId(v);
-                scheduleAutoSaveRef.current();
-              }}
-              onOpenChange={(open) => {
-                if (open) refreshCollections();
-              }}
+            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="h-8 gap-1.5 shrink-0"
+              title="Delete note"
             >
-              <SelectTrigger className="h-7 w-44 text-xs">
-                <SelectValue placeholder="Collection (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {collections.map((c) => (
-                  <SelectItem key={c.id} value={c.id} className="text-xs">
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
             <Popover
-              open={tagPopoverOpen}
-              onOpenChange={(open) => {
-                if (open) refreshTags();
-                setTagPopoverOpen(open);
-              }}
+              open={summaryPopoverOpen}
+              onOpenChange={setSummaryPopoverOpen}
             >
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
-                  <Tag className="h-3 w-3" />
-                  {selectedTagIds.length > 0
-                    ? `${selectedTagIds.length} tag${selectedTagIds.length > 1 ? "s" : ""}`
-                    : "Add tags"}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSummarize}
+                  disabled={isSummarizing}
+                  className="h-8 gap-1.5 shrink-0"
+                  title="Summarize note (AI)"
+                >
+                  {isSummarizing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-48 p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search tags…" className="h-8 text-xs" />
-                  <CommandList>
-                    <CommandEmpty className="text-xs py-2 text-center">
-                      No tags found.
-                    </CommandEmpty>
-                    <CommandGroup>
-                      {tags.map((tag) => {
-                        const checked = selectedTagIds.includes(tag.id);
-                        return (
-                          <CommandItem
-                            key={tag.id}
-                            value={tag.name}
-                            className="text-xs"
-                            onSelect={() => {
-                              setSelectedTagIds((prev) => {
-                                const next = checked
-                                  ? prev.filter((id) => id !== tag.id)
-                                  : [...prev, tag.id];
-                                scheduleAutoSaveRef.current();
-                                return next;
-                              });
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-3.5 w-3.5",
-                                !checked && "opacity-0",
-                              )}
-                            />
-                            {tag.name}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+              <PopoverContent className="w-80 space-y-3" align="end">
+                <p className="text-sm">{summary}</p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopySummary}
+                    className="gap-1.5"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleInsertSummary}
+                    className="gap-1.5"
+                  >
+                    Insert
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+              className="h-8 gap-1.5 shrink-0"
+              title="Export note (.md)"
+            >
+              <SquareArrowRightExit className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        ) : (
-          <div className="flex items-center gap-1.5 flex-wrap min-h-7">
-            {collectionName && (
-              <span className="inline-flex items-center gap-1 bg-muted rounded px-2 py-0.5 text-xs text-muted-foreground">
-                <Folder className="h-3 w-3" />
-                {collectionName}
-              </span>
-            )}
-            {selectedTags.map((tag) => (
-              <Badge key={tag.id} variant="secondary" className="text-xs px-1.5 py-0">
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-        )}
 
-        {/* Timestamps row */}
-        {(createdAt || updatedAt) && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {createdAt && <span>Created: {formatDate(createdAt)}</span>}
-            {updatedAt && <span>Updated: {formatDate(updatedAt)}</span>}
-          </div>
-        )}
-      </div>
+          {/* Meta row */}
+          <NoteMetaBar
+            isEditMode={isEditMode}
+            collections={collections}
+            tags={tags}
+            collectionId={collectionId}
+            selectedTagIds={selectedTagIds}
+            tagPopoverOpen={tagPopoverOpen}
+            onTagPopoverOpenChange={(open) => {
+              if (open) refreshTags();
+              setTagPopoverOpen(open);
+            }}
+            onCollectionOpenChange={refreshCollections}
+            onCollectionChange={(v) => {
+              setCollectionId(v);
+              scheduleAutoSave();
+            }}
+            onToggleTag={(tagId) => {
+              setSelectedTagIds((prev) => {
+                const next = prev.includes(tagId)
+                  ? prev.filter((id) => id !== tagId)
+                  : [...prev, tagId];
+                scheduleAutoSave();
+                return next;
+              });
+            }}
+          />
 
-      {/* Editor */}
-      <div className="flex-1 overflow-auto">
-        {isNoteLoading && (
-          <div className="px-6 py-4 space-y-3" aria-hidden>
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-4 w-11/12" />
+          {/* Timestamps row */}
+          {(createdAt || updatedAt) && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {createdAt && <span>Created: {formatDate(createdAt)}</span>}
+              {updatedAt && <span>Updated: {formatDate(updatedAt)}</span>}
+            </div>
+          )}
+        </div>
+
+        {/* Editor */}
+        <div className="flex-1 overflow-auto">
+          {isNoteLoading && (
+            <div className="px-6 py-4 space-y-3" aria-hidden>
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-11/12" />
+            </div>
+          )}
+          <div className={cn(isNoteLoading && "hidden")}>
+            <EditorContent editor={editor} />
           </div>
-        )}
-        <div className={cn(isNoteLoading && "hidden")}>
-          <EditorContent editor={editor} />
         </div>
       </div>
-    </div>
 
-    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader className="place-items-stretch sm:place-items-stretch text-left">
-          <AlertDialogTitle className="text-xl font-bold">
-            Delete note?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-base font-semibold [text-wrap:unset]">
-            &ldquo;
-            {title.length > 20 ? title.slice(0, 20) + "…" : title}
-            &rdquo; will be permanently deleted. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isDeleting ? "Deleting…" : "Delete"}
-          </AlertDialogAction>
-          <AlertDialogCancel disabled={isDeleting} className="w-full mt-0">
-            Cancel
-          </AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <DeleteNoteDialog
+        noteId={noteId}
+        title={title}
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onDeleted={onDeleted}
+      />
     </>
   );
 }

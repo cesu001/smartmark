@@ -1,58 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Check, X } from "lucide-react";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useInlineCreate } from "@/hooks/useInlineCreate";
 
 interface AddCollectionTileProps {
   variant: "empty" | "compact";
 }
 
 export default function AddCollectionTile({ variant }: AddCollectionTileProps) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
-
-  async function handleSubmit(e: { preventDefault(): void }) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard/collection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      if (res.ok) {
-        setName("");
-        setOpen(false);
-        router.refresh();
-        toast.success("Collection created");
-      } else {
-        toast.error("Failed to create collection");
-      }
-    } catch {
-      toast.error("Failed to create collection");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleCancel() {
-    setName("");
-    setOpen(false);
-  }
+  const { open, setOpen, name, setName, loading, inputRef, handleSubmit, handleCancel } =
+    useInlineCreate({
+      endpoint: "/api/dashboard/collection",
+      successMessage: "Collection created",
+      errorMessage: "Failed to create collection",
+    });
 
   if (open) {
     const formClassName =

@@ -35,6 +35,7 @@ import { embedNoteContent } from "@/lib/ai/embeddings";
 import {
   createNote,
   updateNote,
+  updateNoteFlags,
   deleteNote,
   searchNotesByTitle,
   searchNotesByContent,
@@ -204,6 +205,38 @@ describe("updateNote", () => {
     });
 
     expect(mockedEmbedNoteContent).toHaveBeenCalledWith("note-1", "new content");
+  });
+});
+
+describe("updateNoteFlags", () => {
+  it("returns null when the note doesn't belong to the user", async () => {
+    mockedPrisma.note.findFirst.mockResolvedValue(null);
+
+    const result = await updateNoteFlags("note-1", "user-1", { isPinned: true });
+
+    expect(result).toBeNull();
+    expect(mockedPrisma.note.update).not.toHaveBeenCalled();
+  });
+
+  it("updates the flags and returns them when the note is owned", async () => {
+    mockedPrisma.note.findFirst.mockResolvedValue({ id: "note-1" } as never);
+    mockedPrisma.note.update.mockResolvedValue({
+      id: "note-1",
+      isPinned: true,
+      isFavorite: false,
+    } as never);
+
+    const result = await updateNoteFlags("note-1", "user-1", { isPinned: true });
+
+    expect(mockedPrisma.note.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "note-1", userId: "user-1" } }),
+    );
+    expect(mockedPrisma.note.update).toHaveBeenCalledWith({
+      where: { id: "note-1" },
+      data: { isPinned: true },
+      select: { id: true, isPinned: true, isFavorite: true },
+    });
+    expect(result).toEqual({ id: "note-1", isPinned: true, isFavorite: false });
   });
 });
 

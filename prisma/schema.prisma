@@ -132,6 +132,7 @@ model NoteTag {
   tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([noteId, tagId])
+  @@index([tagId])
 }
 
 model PasswordResetToken {

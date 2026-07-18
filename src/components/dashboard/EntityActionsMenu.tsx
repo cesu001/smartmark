@@ -58,8 +58,6 @@ const EntityActionsMenu = ({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const label = type === "collection" ? "collection" : "tag";
-
   async function handleRename() {
     const trimmed = newName.trim();
     if (!trimmed) return;
@@ -72,11 +70,11 @@ const EntityActionsMenu = ({
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) throw new Error("Failed to rename");
-      toast.success(`${label === "collection" ? "Collection" : "Tag"} renamed`);
+      toast.success(`${type === "collection" ? "Collection" : "Tag"} renamed`);
       setEditOpen(false);
       router.refresh();
     } catch {
-      toast.error(`Failed to rename ${label}`);
+      toast.error(`Failed to rename ${type}`);
     } finally {
       setSaving(false);
     }
@@ -89,11 +87,11 @@ const EntityActionsMenu = ({
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete");
-      toast.success(`${label === "collection" ? "Collection" : "Tag"} deleted`);
+      toast.success(`${type === "collection" ? "Collection" : "Tag"} deleted`);
       router.push(redirectTo);
       router.refresh();
     } catch {
-      toast.error(`Failed to delete ${label}`);
+      toast.error(`Failed to delete ${type}`);
     } finally {
       setDeleting(false);
       setConfirmOpen(false);
@@ -132,9 +130,7 @@ const EntityActionsMenu = ({
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Rename {label === "collection" ? "collection" : "tag"}
-            </DialogTitle>
+            <DialogTitle>Rename {type}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2">
             <Label htmlFor="entity-name">Name</Label>
@@ -164,7 +160,7 @@ const EntityActionsMenu = ({
         <AlertDialogContent>
           <AlertDialogHeader className="place-items-stretch sm:place-items-stretch text-left">
             <AlertDialogTitle className="text-xl font-bold">
-              Delete {label}?
+              Delete {type}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base font-semibold [text-wrap:unset]">
               {type === "collection" ? (
