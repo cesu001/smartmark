@@ -13,6 +13,7 @@ import SearchResultRow, {
 import SearchResultEntityRow, {
   type SearchResultEntity,
 } from "./SearchResultEntityRow";
+import SearchResultSection from "./SearchResultSection";
 
 interface SearchResponse {
   titleMatches: SearchResultNote[];
@@ -296,119 +297,94 @@ export default function SearchBar() {
               )}
 
               {!error && !noResults && mode === "semantic" && (
-                <section>
-                  <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Semantic Matches
-                  </p>
-                  {semanticMatches.map((n, i) => (
+                <SearchResultSection
+                  label="Semantic Matches"
+                  items={semanticMatches}
+                  indexOffset={0}
+                  renderItem={(n, flatIndex) => (
                     <SearchResultRow
                       key={n.id}
                       note={n}
-                      active={activeIndex === i}
+                      active={activeIndex === flatIndex}
                       onSelect={handleSelect}
                     />
-                  ))}
-                </section>
+                  )}
+                />
               )}
 
               {!error && !noResults && mode === "normal" && (
                 <>
-                  <section>
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Title Matches
-                    </p>
-                    {titleMatches.length > 0 ? (
-                      titleMatches.map((n, i) => (
-                        <SearchResultRow
-                          key={n.id}
-                          note={n}
-                          active={activeIndex === i}
-                          onSelect={handleSelect}
-                        />
-                      ))
-                    ) : (
-                      <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
-                        No title matches
-                      </p>
+                  <SearchResultSection
+                    label="Title Matches"
+                    items={titleMatches}
+                    emptyText="No title matches"
+                    indexOffset={0}
+                    renderItem={(n, flatIndex) => (
+                      <SearchResultRow
+                        key={n.id}
+                        note={n}
+                        active={activeIndex === flatIndex}
+                        onSelect={handleSelect}
+                      />
                     )}
-                  </section>
+                  />
 
                   <div className="border-t border-border" />
 
-                  <section>
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Content Matches
-                    </p>
-                    {contentMatches.length > 0 ? (
-                      contentMatches.map((n, i) => (
-                        <SearchResultRow
-                          key={n.id}
-                          note={n}
-                          active={activeIndex === titleMatches.length + i}
-                          onSelect={handleSelect}
-                        />
-                      ))
-                    ) : (
-                      <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
-                        No content matches
-                      </p>
+                  <SearchResultSection
+                    label="Content Matches"
+                    items={contentMatches}
+                    emptyText="No content matches"
+                    indexOffset={titleMatches.length}
+                    renderItem={(n, flatIndex) => (
+                      <SearchResultRow
+                        key={n.id}
+                        note={n}
+                        active={activeIndex === flatIndex}
+                        onSelect={handleSelect}
+                      />
                     )}
-                  </section>
+                  />
 
                   <div className="border-t border-border" />
 
-                  <section>
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Collections
-                    </p>
-                    {collectionMatches.length > 0 ? (
-                      collectionMatches.map((c, i) => (
-                        <SearchResultEntityRow
-                          key={c.id}
-                          entity={c}
-                          type="collection"
-                          active={
-                            activeIndex ===
-                            titleMatches.length + contentMatches.length + i
-                          }
-                          onSelect={handleSelectEntity}
-                        />
-                      ))
-                    ) : (
-                      <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
-                        No collection matches
-                      </p>
+                  <SearchResultSection
+                    label="Collections"
+                    items={collectionMatches}
+                    emptyText="No collection matches"
+                    indexOffset={titleMatches.length + contentMatches.length}
+                    renderItem={(c, flatIndex) => (
+                      <SearchResultEntityRow
+                        key={c.id}
+                        entity={c}
+                        type="collection"
+                        active={activeIndex === flatIndex}
+                        onSelect={handleSelectEntity}
+                      />
                     )}
-                  </section>
+                  />
 
                   <div className="border-t border-border" />
 
-                  <section>
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Tags
-                    </p>
-                    {tagMatches.length > 0 ? (
-                      tagMatches.map((t, i) => (
-                        <SearchResultEntityRow
-                          key={t.id}
-                          entity={t}
-                          type="tag"
-                          active={
-                            activeIndex ===
-                            titleMatches.length +
-                              contentMatches.length +
-                              collectionMatches.length +
-                              i
-                          }
-                          onSelect={handleSelectEntity}
-                        />
-                      ))
-                    ) : (
-                      <p className="px-3 pb-2 text-xs text-muted-foreground/70 italic">
-                        No tag matches
-                      </p>
+                  <SearchResultSection
+                    label="Tags"
+                    items={tagMatches}
+                    emptyText="No tag matches"
+                    indexOffset={
+                      titleMatches.length +
+                      contentMatches.length +
+                      collectionMatches.length
+                    }
+                    renderItem={(t, flatIndex) => (
+                      <SearchResultEntityRow
+                        key={t.id}
+                        entity={t}
+                        type="tag"
+                        active={activeIndex === flatIndex}
+                        onSelect={handleSelectEntity}
+                      />
                     )}
-                  </section>
+                  />
                 </>
               )}
             </div>

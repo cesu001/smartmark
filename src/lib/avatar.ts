@@ -10,13 +10,17 @@ export function getInitials(name?: string | null, email?: string | null): string
 
 export const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
+// Raster formats only. SVG is deliberately excluded: it can embed <script> and
+// on* handlers that execute when the uploaded file is opened as a top-level
+// document (the public R2 URL), and neither the extension nor the mime type
+// checked below is trustworthy — both come from the client. Re-adding SVG would
+// require sanitizing the file contents server-side before uploadToR2.
 export const AVATAR_MIME_BY_EXTENSION: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
-  svg: "image/svg+xml",
 };
 
 export interface AvatarValidationResult {
@@ -40,7 +44,7 @@ export function validateAvatarFile(
   if (!extension || !expectedMime) {
     return {
       valid: false,
-      error: "Unsupported file type. Use PNG, JPG, GIF, WEBP, or SVG",
+      error: "Unsupported file type. Use PNG, JPG, GIF, or WEBP",
     };
   }
 

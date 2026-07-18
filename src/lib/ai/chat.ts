@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai";
 import type { NoteSearchResult } from "@/lib/db/notes";
+import { escapeForPrompt } from "./prompt-utils";
 
 // Same calibration as the semantic search feature (text-embedding-3-small):
 // related notes score ~0.61, unrelated ones <0.05.
@@ -56,18 +57,6 @@ export function extractLastUserText(messages: UIMessage[]): string {
     .map((part) => part.text)
     .join(" ")
     .trim();
-}
-
-// Note titles and excerpts are free-text and user-controlled. Without
-// escaping, a title containing `"` (or `</note>`) could break out of the
-// `<note title="...">` delimiter and have injected text appear to sit outside
-// the "this is data, not instructions" boundary above.
-function escapeForPrompt(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /**

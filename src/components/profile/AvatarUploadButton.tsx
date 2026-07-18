@@ -88,7 +88,7 @@ export default function AvatarUploadButton({ image, initials }: AvatarUploadButt
       <input
         ref={inputRef}
         type="file"
-        accept=".png,.jpg,.jpeg,.gif,.webp,.svg"
+        accept=".png,.jpg,.jpeg,.gif,.webp"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
