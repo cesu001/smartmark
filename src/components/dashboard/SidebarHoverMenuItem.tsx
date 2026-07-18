@@ -34,7 +34,12 @@ export default function SidebarHoverMenuItem({
   const router = useRouter();
   const triggerRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const notesCache = useRef<Note[] | null>(null);
+  // Guards against firing a second request while one is already in flight
+  // (mouseenter can fire in quick succession). NOT a result cache — we
+  // deliberately refetch on every hover so the list reflects current
+  // membership, since router.refresh() updates the server sidebar's counts
+  // but never remounts this client component to clear a cached list.
+  const isFetchingRef = useRef(false);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -48,10 +53,8 @@ export default function SidebarHoverMenuItem({
   const Icon = type === "collection" ? Folder : Tag;
 
   const fetchNotes = async () => {
-    if (notesCache.current !== null) {
-      setNotes(notesCache.current);
-      return;
-    }
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     const endpoint =
       type === "collection"
         ? `/api/dashboard/collection/${id}/notes`
@@ -59,12 +62,15 @@ export default function SidebarHoverMenuItem({
     try {
       const res = await fetch(endpoint);
       if (res.ok) {
+        // Stale-while-revalidate: `notes` keeps showing the previous list
+        // until this resolves, so a re-hover doesn't flash "Loading…".
         const data: Note[] = await res.json();
-        notesCache.current = data;
         setNotes(data);
       }
     } catch {
-      // silently fail — popup shows nothing
+      // silently fail — keep showing whatever was last loaded
+    } finally {
+      isFetchingRef.current = false;
     }
   };
 
