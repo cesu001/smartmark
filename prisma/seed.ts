@@ -9,6 +9,62 @@ const adapter = new PrismaNeon({
 
 const prisma = new PrismaClient({ adapter });
 
+/**
+ * Opt-in embedding generation for seeded notes.
+ *
+ * Off by default: embedding calls cost money, add latency, and would make a
+ * plain `prisma db seed` hard-require an `OPENAI_API_KEY` just to populate a
+ * fresh dev database. Enable with `SEED_EMBEDDINGS=1 npx prisma db seed`.
+ *
+ * Without this, seeded notes have a NULL embedding and are invisible to
+ * semantic search and the AI chatbot (both filter `WHERE embedding IS NOT
+ * NULL`). `scripts/backfill-embeddings.ts` fixes an existing database after
+ * the fact; this covers the notes at creation time.
+ *
+ * Imported dynamically so the OpenAI client is never loaded when the flag is
+ * off, and reuses the app's real `embedNoteContent()` so seeded vectors are
+ * identical to what a normal note save produces.
+ */
+async function seedEmbeddings(
+  notes: { id: string; title: string; content: string }[],
+) {
+  if (!process.env.SEED_EMBEDDINGS) {
+    console.log(
+      "\nSkipping embeddings (set SEED_EMBEDDINGS=1 to generate them).",
+    );
+    console.log(
+      "Seeded notes will not appear in semantic search or the AI chatbot until embedded.",
+    );
+    return;
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn(
+      "\nSEED_EMBEDDINGS is set but OPENAI_API_KEY is missing — skipping embeddings.",
+    );
+    return;
+  }
+
+  const { embedNoteContent } = await import("../src/lib/ai/embeddings");
+
+  console.log(`\nGenerating embeddings for ${notes.length} note(s)...`);
+
+  let ok = 0;
+  let failed = 0;
+  for (const note of notes) {
+    try {
+      await embedNoteContent(note.id, note.content);
+      ok++;
+      console.log("  ✓ Embedded:", note.title);
+    } catch (err) {
+      failed++;
+      console.error("  ✗ Failed:", note.title, err);
+    }
+  }
+
+  console.log(`Embedded ${ok} note(s), ${failed} failure(s).`);
+}
+
 async function main() {
   console.log("Seeding database...\n");
 
@@ -167,6 +223,8 @@ async function main() {
     },
   ];
 
+  const seededNotes: { id: string; title: string; content: string }[] = [];
+
   for (const { tagNames, collectionName, ...noteData } of notesData) {
     const existingNote = await prisma.note.findFirst({
       where: { userId: user.id, title: noteData.title },
@@ -194,8 +252,18 @@ async function main() {
       });
     }
 
+    // Read content back off the upserted row, not `noteData` — the upsert is a
+    // no-op for a note that already exists, so its stored content may have been
+    // edited since. Embedding the seed text would then not match the note.
+    seededNotes.push({
+      id: note.id,
+      title: note.title,
+      content: note.content ?? "",
+    });
     console.log("✓ Note:", note.title);
   }
+
+  await seedEmbeddings(seededNotes);
 
   console.log("\nSeeding complete.");
 }

@@ -13,6 +13,8 @@ Add the AI Chatbot panel to the right sidebar (per `project-overview.md`'s layou
 - RAG grounding: embed the user's latest message, call `searchNotesByEmbedding` (from the RAG Search feature), and inject the top matches into the `system` prompt as delimited context (not raw-concatenated) so the model can reference the user's actual notes
   - Cap injected context to the top 3-5 matches, title + short excerpt only — not full note bodies, to keep input tokens bounded regardless of note collection size
 - Frontend: chatbot UI in the right sidebar using `useChat` from `@ai-sdk/react` + `TextStreamChatTransport`
+
+> **Two deviations shipped.** (1) `TextStreamChatTransport` is incompatible with this route's `createUIMessageStreamResponse`/`toUIMessageStream` protocol — `useChat`'s default `DefaultChatTransport` is the matching pair and is what's used. (2) There is no right sidebar anywhere in the built app, so the chatbot is a right-side shadcn `Sheet` opened from a `MessageCircle` button in `AppNavbar` (semantic search landed in the navbar too).
   - Standard chat UI: message list, input box, streaming indicator
   - Error state via sonner toast, consistent with the rest of the dashboard
 

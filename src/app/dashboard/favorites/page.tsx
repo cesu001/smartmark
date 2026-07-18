@@ -1,6 +1,7 @@
 import AppColCard from "@/components/dashboard/AppColCard";
 import AppNoteCard from "@/components/dashboard/AppNoteCard";
 import AppTagCard from "@/components/dashboard/AppTagCard";
+import LoadMoreNotes from "@/components/dashboard/LoadMoreNotes";
 import { requireUserId } from "@/lib/auth-utils";
 import { getFavCollection } from "@/lib/db/collections";
 import { getFavoriteNotes } from "@/lib/db/notes";
@@ -9,7 +10,7 @@ import { getFavoriteTags } from "@/lib/db/tags";
 export default async function Page() {
   const userId = await requireUserId();
 
-  const [notes, collections, tags] = await Promise.all([
+  const [{ notes, nextCursor }, collections, tags] = await Promise.all([
     getFavoriteNotes(userId),
     getFavCollection(userId, 100),
     getFavoriteTags(userId),
@@ -26,13 +27,23 @@ export default async function Page() {
               No favorite notes yet
             </div>
           ) : (
-            notes.map((note) => (
-              <AppNoteCard
-                key={note.id}
-                note={note}
-                encodedTitle={encodeURIComponent(note.title)}
-              />
-            ))
+            <>
+              {notes.map((note) => (
+                <AppNoteCard
+                  key={note.id}
+                  note={note}
+                  encodedTitle={encodeURIComponent(note.title)}
+                />
+              ))}
+              {/* Keyed on the cursor — see the note in allnotes/page.tsx. */}
+              {nextCursor && (
+                <LoadMoreNotes
+                  key={nextCursor}
+                  scope="favorites"
+                  initialCursor={nextCursor}
+                />
+              )}
+            </>
           )}
         </div>
       </section>

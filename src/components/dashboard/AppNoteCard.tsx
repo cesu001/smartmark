@@ -21,9 +21,16 @@ import { Note } from "@/types/dashboard";
 interface AppNoteCardProps {
   note: Note;
   encodedTitle?: string;
+  /**
+   * Runs after this card's note is deleted. Server-rendered lists don't need
+   * it (`router.refresh()` re-fetches them), but a client-held list such as
+   * `LoadMoreNotes` must drop the row from its own state or the deleted card
+   * stays on screen.
+   */
+  onDeleted?: () => void;
 }
 
-const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
+const AppNoteCard = ({ note, encodedTitle, onDeleted }: AppNoteCardProps) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const previewContent = getContentPreview(note.content);
@@ -104,6 +111,7 @@ const AppNoteCard = ({ note, encodedTitle }: AppNoteCardProps) => {
         title={note.title}
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
+        onDeleted={onDeleted}
       />
     </>
   );

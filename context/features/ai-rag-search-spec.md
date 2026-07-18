@@ -27,6 +27,8 @@ Let users type a natural-language query into the right-sidebar search box (per `
   - `requireUserId()` → `requireProUser()` → `applyRateLimit(aiSearchLimiter, userId)` → Zod-validate `{ query: string }` → run both the title-match query and (embed → semantic) search → return **two separate lists**: `{ titleMatches, semanticMatches }`
 - Apply a minimum similarity threshold (e.g. discard below ~0.75) to the **semantic** list only, so an unrelated query doesn't return noise; title matches always show
 
+> **Shipped as 0.35, not 0.75.** Empirically, `text-embedding-3-small` scores genuinely related notes at ~0.61 and unrelated ones below 0.05, so a 0.75 floor rejected real matches. The 0.35 value is shared by the AI Chatbot's grounding filter (`CHAT_SIMILARITY_THRESHOLD` in `src/lib/ai/chat.ts`).
+
 ### Frontend
 
 - Add the search bar to the **mid-top of the page** (top-center), not the right sidebar

@@ -13,6 +13,7 @@ Shared infrastructure that the AI Chatbot, Summarizing, and RAG Search features 
   - `createOpenAI({ apiKey: process.env.OPENAI_API_KEY })`
   - Export `CHAT_MODEL` = `openai("gpt-5.4-nano")`
   - Export `EMBEDDING_MODEL` = `openai.textEmbeddingModel("text-embedding-3-small")`
+    > **Shipped as `openai.embedding("text-embedding-3-small")`** — the current method for the installed SDK version.
 - `OPENAI_API_KEY` is already documented in `.env.example` — no new env var needed
 - Add `requireProUser(userId)` to `src/lib/auth-utils.ts`, next to `requireUserId()`
   - Query `User.isPro` directly from the DB — do **not** trust the session/JWT (same staleness class of bug already fixed twice for `userName`/`image`)
